@@ -1165,14 +1165,42 @@ public final class MeshProtocolTests {
             throw NSError(domain: "Test", code: 50, userInfo: [NSLocalizedDescriptionKey: "Initial session should have no connected peers"])
         }
 
-        // 2. Verify certificate handler auto-approves
+        // 2. Verify certificate handler auto-approves in development mode, but enforces validation in production
         var certificateApproved = false
         let dummyPeer = MCPeerID(displayName: "iPhone-Beta")
+        managerA.allowDevelopmentCertificates = true
         managerA.session(sessionA, didReceiveCertificate: (nil as [Any]?), fromPeer: dummyPeer) { approved in
             certificateApproved = approved
         }
         guard certificateApproved else {
-            throw NSError(domain: "Test", code: 51, userInfo: [NSLocalizedDescriptionKey: "didReceiveCertificate failed to approve peer certificate!"])
+            throw NSError(domain: "Test", code: 51, userInfo: [NSLocalizedDescriptionKey: "didReceiveCertificate failed to approve peer certificate in development mode!"])
+        }
+
+        // Verify production mode rejects missing/untrusted certificate
+        var productionCertApproved = true
+        managerA.allowDevelopmentCertificates = false
+        managerA.session(sessionA, didReceiveCertificate: (nil as [Any]?), fromPeer: dummyPeer) { approved in
+            productionCertApproved = approved
+        }
+        guard !productionCertApproved else {
+            throw NSError(domain: "Test", code: 51, userInfo: [NSLocalizedDescriptionKey: "didReceiveCertificate erroneously approved untrusted peer in production mode!"])
+        }
+
+        // Verify custom certificate validator hook
+        final class BoolBox: @unchecked Sendable {
+            var value = false
+        }
+        let customValidatorCalled = BoolBox()
+        managerA.certificateValidator = { peer, _ in
+            customValidatorCalled.value = true
+            return peer.displayName == "iPhone-Beta"
+        }
+        var customApproved = false
+        managerA.session(sessionA, didReceiveCertificate: (nil as [Any]?), fromPeer: dummyPeer) { approved in
+            customApproved = approved
+        }
+        guard customValidatorCalled.value && customApproved else {
+            throw NSError(domain: "Test", code: 51, userInfo: [NSLocalizedDescriptionKey: "custom certificateValidator hook was not executed properly!"])
         }
 
         // 3. Verify tie-breaker logic with distinct and identical names

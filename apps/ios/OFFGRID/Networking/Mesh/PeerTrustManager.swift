@@ -57,12 +57,36 @@ public final class PeerTrustManager: @unchecked Sendable {
 
     /// Strips sensitive location data from packets unless explicitly authorized as an Emergency SOS
     public func sanitizeLocationIfNeeded(op: ContractV1.Operation) -> ContractV1.Operation {
-        guard op.entityType != .sos else {
-            // SOS packets are authorized to carry location coordinates
+        guard op.entityType == .sos, case .sos(let sosPayload) = op.payload else {
             return op
         }
 
-        // For non-SOS operations, ensure location is sanitized
+        // If peer is not explicitly trusted and not in development mode, strip precise GPS coordinates
+        if !isPeerTrusted(nodeId: op.originNodeId) && !isDevelopmentMode {
+            let coarsenedLocation = ContractV1.SOSLocation(
+                label: sosPayload.location.label,
+                latitude: nil,
+                longitude: nil
+            )
+            let coarsenedPayload = ContractV1.SOSPayload(
+                text: sosPayload.text,
+                category: sosPayload.category,
+                location: coarsenedLocation
+            )
+            return ContractV1.Operation(
+                schemaVersion: op.schemaVersion,
+                operationId: op.operationId,
+                originNodeId: op.originNodeId,
+                entityId: op.entityId,
+                timestamp: op.timestamp,
+                lamportClock: op.lamportClock,
+                entityType: op.entityType,
+                action: op.action,
+                baseVersion: op.baseVersion,
+                payload: .sos(coarsenedPayload)
+            )
+        }
+
         return op
     }
 
@@ -73,3 +97,4 @@ public final class PeerTrustManager: @unchecked Sendable {
         peerPacketTimestamps.removeAll()
     }
 }
+

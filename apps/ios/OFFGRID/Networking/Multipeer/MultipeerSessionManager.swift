@@ -1,5 +1,6 @@
 import Foundation
 import MultipeerConnectivity
+import Security
 
 public enum MultipeerError: Error, LocalizedError {
     case noConnectedPeers
@@ -33,6 +34,13 @@ public final class MultipeerSessionManager: NSObject, @unchecked Sendable {
     private var reconnectWorkItems: [String: DispatchWorkItem] = [:]
 
     public var onDiagnosticLog: ((DiagnosticCategory, String) -> Void)?
+
+    /// When true, enables development auto-approval mode for local test mesh and physical debugging.
+    /// When false, requires strict SecTrust X.509 verification or explicit certificateValidator approval.
+    public var allowDevelopmentCertificates: Bool = true
+
+    /// Optional explicit validator closure for custom trust pinning, pairing tokens, or authorized node IDs.
+    public var certificateValidator: (@Sendable (MCPeerID, [Any]?) -> Bool)?
 
     public var hasConnectedPeers: Bool {
         lock.lock()
@@ -310,8 +318,39 @@ extension MultipeerSessionManager: MCSessionDelegate {
         fromPeer peerID: MCPeerID,
         certificateHandler: @escaping (Bool) -> Void
     ) {
-        onDiagnosticLog?(.session, "Validating peer certificate from [\(peerID.displayName)] -> APPROVED (trusted local mesh peer)")
-        certificateHandler(true)
+        if let validator = certificateValidator {
+            let approved = validator(peerID, certificate)
+            onDiagnosticLog?(.session, "Validating peer certificate from [\(peerID.displayName)] via custom validator -> \(approved ? "APPROVED" : "REJECTED")")
+            certificateHandler(approved)
+            return
+        }
+
+        if allowDevelopmentCertificates {
+            onDiagnosticLog?(.session, "Validating peer certificate from [\(peerID.displayName)] -> APPROVED (development auto-approval mode)")
+            certificateHandler(true)
+            return
+        }
+
+        // Production verification: evaluate SecTrust against system/pinned certificates
+        guard let certs = certificate as? [SecCertificate], let firstCert = certs.first else {
+            onDiagnosticLog?(.error, "Rejecting peer [\(peerID.displayName)]: missing or invalid certificate chain")
+            certificateHandler(false)
+            return
+        }
+
+        let policy = SecPolicyCreateBasicX509()
+        var trust: SecTrust?
+        let status = SecTrustCreateWithCertificates(firstCert, policy, &trust)
+        guard status == errSecSuccess, let secTrust = trust else {
+            onDiagnosticLog?(.error, "Rejecting peer [\(peerID.displayName)]: failed to create SecTrust object")
+            certificateHandler(false)
+            return
+        }
+
+        var error: CFError?
+        let isTrusted = SecTrustEvaluateWithError(secTrust, &error)
+        onDiagnosticLog?(.session, "Production SecTrust evaluation for [\(peerID.displayName)] -> \(isTrusted ? "APPROVED" : "REJECTED (\(error?.localizedDescription ?? "untrusted"))")")
+        certificateHandler(isTrusted)
     }
 
     public func session(_ session: MCSession, didReceive stream: InputStream, withName streamName: String, fromPeer peerID: MCPeerID) {}

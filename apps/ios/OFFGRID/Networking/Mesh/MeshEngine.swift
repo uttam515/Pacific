@@ -387,7 +387,7 @@ public final class MeshEngine: @unchecked Sendable {
         // Exclude incoming peer and source node from relay targets
         let excludeSet: Set<String> = [incomingFromPeer, envelope.sourceNodeId]
 
-        if envelope.destinationNodeId == "*" {
+        if envelope.destinationNodeId == "*" || envelope.destinationNodeId.caseInsensitiveCompare(ContractV1.broadcastRecipientId) == .orderedSame {
             // Broadcast / SOS: Forward to ALL eligible connected peers (excluding sender)
             let eligible = connected.filter { !excludeSet.contains($0.id) && !excludeSet.contains($0.displayName) }
             guard !eligible.isEmpty else { return }

@@ -40,7 +40,8 @@ public final class RelayManager: Sendable {
     ) -> Bool {
         // 1. If packet destination is solely local node, destination reached -> do NOT relay
         if envelope.destinationNodeId != "*" &&
-            envelope.destinationNodeId.caseInsensitiveCompare(localNodeId) == .orderedSame {
+           envelope.destinationNodeId.caseInsensitiveCompare(ContractV1.broadcastRecipientId) != .orderedSame &&
+           envelope.destinationNodeId.caseInsensitiveCompare(localNodeId) == .orderedSame {
             return false
         }
 
