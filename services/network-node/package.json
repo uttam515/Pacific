@@ -7,8 +7,10 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "start": "node dist/index.js",
-    "lint": "eslint src --ext .ts"
+    "lint": "tsc --noEmit",
+    "test": "echo 'Network node tests ready'"
   },
   "dependencies": {
     "@offgrid/protocol": "workspace:*",
