@@ -43,10 +43,10 @@ public final class ChatViewModel: ObservableObject {
         let trimmed = inputMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        // 1. Generate unique operation & message IDs
-        let messageId = UUID().uuidString
-        let operationId = UUID().uuidString
-        let nodeId = KeychainHelper.shared.getOrCreateNodeId()
+        // 1. Generate unique operation & message IDs (lowercase UUIDv4)
+        let messageId = UUID().uuidString.lowercased()
+        let operationId = UUID().uuidString.lowercased()
+        let nodeId = KeychainHelper.shared.getOrCreateNodeId().lowercased()
 
         let message = OFFGRIDMessage(
             id: messageId,
@@ -59,8 +59,9 @@ public final class ChatViewModel: ObservableObject {
             status: .localOnly
         )
 
-        // 2. Wrap into operation record
-        guard let json = try? JSONEncoder().encode(message),
+        // 2. Wrap into operation record with Contract v1 payload
+        let contractPayload = ContractV1.MessagePayload(text: trimmed, recipientNodeId: ContractV1.broadcastRecipientId)
+        guard let json = try? JSONEncoder().encode(contractPayload),
               let jsonString = String(data: json, encoding: .utf8) else {
             return
         }
@@ -103,7 +104,7 @@ public final class ChatViewModel: ObservableObject {
     public func retryTransmission(for messageId: String) {
         guard let message = messageRepository.getMessage(id: messageId) else { return }
         let pendingOps = operationRepository.getPendingOperations()
-        guard let op = pendingOps.first(where: { $0.entityId == messageId }) else {
+        guard let op = pendingOps.first(where: { $0.entityId.caseInsensitiveCompare(messageId) == .orderedSame }) ?? operationRepository.getOperation(byOperationId: messageId) else {
             return
         }
 

@@ -94,10 +94,10 @@ public final class SOSViewModel: ObservableObject {
     }
 
     public func broadcastSOS() {
-        let nodeId = KeychainHelper.shared.getOrCreateNodeId()
+        let nodeId = KeychainHelper.shared.getOrCreateNodeId().lowercased()
         let content = "[\(selectedEmergencyType.uppercased())] \(emergencyDetails.isEmpty ? "Assistance requested immediately." : emergencyDetails)"
-        let messageId = UUID().uuidString
-        let operationId = UUID().uuidString
+        let messageId = UUID().uuidString.lowercased()
+        let operationId = UUID().uuidString.lowercased()
         self.lastOutgoingMessageId = messageId
 
         let sosMessage = OFFGRIDMessage(
@@ -111,7 +111,24 @@ public final class SOSViewModel: ObservableObject {
             status: .localOnly
         )
 
-        guard let json = try? JSONEncoder().encode(sosMessage),
+        let category: ContractV1.SOSCategory
+        let upper = selectedEmergencyType.uppercased()
+        if upper.contains("MEDICAL") {
+            category = .medical
+        } else if upper.contains("SUPPLIES") {
+            category = .supplies
+        } else if upper.contains("OTHER") {
+            category = .other
+        } else {
+            category = .assistance
+        }
+        let contractPayload = ContractV1.SOSPayload(
+            text: content,
+            category: category,
+            location: ContractV1.SOSLocation(label: "Off-Grid Beacon", latitude: nil, longitude: nil)
+        )
+
+        guard let json = try? JSONEncoder().encode(contractPayload),
               let jsonString = String(data: json, encoding: .utf8) else {
             return
         }
@@ -162,14 +179,13 @@ public final class SOSViewModel: ObservableObject {
     public func retryBroadcast(for messageId: String) {
         guard let message = messageRepository.getMessage(id: messageId) else { return }
         let pendingOps = operationRepository.getPendingOperations()
-        guard let op = pendingOps.first(where: { $0.entityId == messageId }) else {
-            transportManager?.broadcastPersistedMessage(message, operationId: UUID().uuidString)
-            loadSOSData()
-            return
+        if let op = pendingOps.first(where: { $0.entityId.caseInsensitiveCompare(messageId) == .orderedSame }) {
+            operationRepository.incrementRetry(operationId: op.id)
+            transportManager?.broadcastPersistedMessage(message, operationId: op.id)
+        } else if let directOp = operationRepository.getOperation(byOperationId: messageId) {
+            operationRepository.incrementRetry(operationId: directOp.id)
+            transportManager?.broadcastPersistedMessage(message, operationId: directOp.id)
         }
-
-        operationRepository.incrementRetry(operationId: op.id)
-        transportManager?.broadcastPersistedMessage(message, operationId: op.id)
         loadSOSData()
     }
 }

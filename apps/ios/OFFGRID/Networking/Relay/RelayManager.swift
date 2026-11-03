@@ -21,4 +21,18 @@ public final class RelayManager: Sendable {
         envelope.hopCount += 1
         envelope.ttl -= 1
     }
+
+    public func prepareRelayEnvelope(envelope: ContractV1.Envelope) -> ContractV1.Envelope {
+        return ContractV1.Envelope(
+            version: envelope.version,
+            packetId: UUID().uuidString.lowercased(),
+            sourceNodeId: envelope.sourceNodeId,
+            destinationNodeId: envelope.destinationNodeId,
+            timestamp: Int64(Date().timeIntervalSince1970 * 1000),
+            ttl: max(0, envelope.ttl - 1),
+            hopCount: envelope.hopCount + 1,
+            type: envelope.type,
+            payload: envelope.payload
+        )
+    }
 }

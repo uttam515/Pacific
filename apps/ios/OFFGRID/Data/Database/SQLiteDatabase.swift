@@ -379,7 +379,7 @@ public final class SQLiteDatabase: @unchecked Sendable {
 
     public func updateMessageStatus(id: String, status: MessageDeliveryStatus) {
         runOnQueue {
-            let sql = "UPDATE messages SET status = ? WHERE id = ?;"
+            let sql = "UPDATE messages SET status = ? WHERE id = ? COLLATE NOCASE;"
             var statement: OpaquePointer?
             if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
                 sqlite3_bind_text(statement, 1, (status.rawValue as NSString).utf8String, -1, nil)
@@ -392,7 +392,7 @@ public final class SQLiteDatabase: @unchecked Sendable {
 
     public func getMessage(byId id: String) -> OFFGRIDMessage? {
         return runOnQueue {
-            let sql = "SELECT id, sender_id, sender_name, recipient_id, content, type, timestamp, status, hop_count, lamport_clock FROM messages WHERE id = ? LIMIT 1;"
+            let sql = "SELECT id, sender_id, sender_name, recipient_id, content, type, timestamp, status, hop_count, lamport_clock FROM messages WHERE id = ? COLLATE NOCASE LIMIT 1;"
             var statement: OpaquePointer?
             var message: OFFGRIDMessage?
 
@@ -623,11 +623,12 @@ public final class SQLiteDatabase: @unchecked Sendable {
 
     public func updateOperationStatus(id: String, status: SyncStatus) {
         runOnQueue {
-            let sql = "UPDATE operations SET sync_status = ? WHERE id = ?;"
+            let sql = "UPDATE operations SET sync_status = ? WHERE id = ? COLLATE NOCASE OR operation_id = ? COLLATE NOCASE;"
             var statement: OpaquePointer?
             if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
                 sqlite3_bind_text(statement, 1, (status.rawValue as NSString).utf8String, -1, nil)
                 sqlite3_bind_text(statement, 2, (id as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 3, (id as NSString).utf8String, -1, nil)
                 sqlite3_step(statement)
             }
             sqlite3_finalize(statement)
@@ -636,10 +637,11 @@ public final class SQLiteDatabase: @unchecked Sendable {
 
     public func incrementOperationRetry(id: String) {
         runOnQueue {
-            let sql = "UPDATE operations SET retry_count = retry_count + 1 WHERE id = ?;"
+            let sql = "UPDATE operations SET retry_count = retry_count + 1 WHERE id = ? COLLATE NOCASE OR operation_id = ? COLLATE NOCASE;"
             var statement: OpaquePointer?
             if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
                 sqlite3_bind_text(statement, 1, (id as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 2, (id as NSString).utf8String, -1, nil)
                 sqlite3_step(statement)
             }
             sqlite3_finalize(statement)

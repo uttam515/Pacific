@@ -10,6 +10,7 @@ public enum ContractV1 {
     public static let maxSafeInteger: Int64 = 9_007_199_254_740_991
     public static let uuidRegex = "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
     public static let cursorRegex = "^c[0-9]{1,20}$"
+    public static let broadcastRecipientId = "00000000-0000-4000-8000-000000000000"
     
     // MARK: - Enums
     
@@ -99,11 +100,40 @@ public enum ContractV1 {
         }
     }
     
-    public enum OperationPayload: Sendable, Equatable {
+    public enum OperationPayload: Codable, Sendable, Equatable {
         case message(MessagePayload)
         case sos(SOSPayload)
         case announcement(AnnouncementPayload)
         case tombstone
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let msg = try? container.decode(MessagePayload.self) {
+                self = .message(msg)
+            } else if let sos = try? container.decode(SOSPayload.self) {
+                self = .sos(sos)
+            } else if let ann = try? container.decode(AnnouncementPayload.self) {
+                self = .announcement(ann)
+            } else if container.decodeNil() {
+                self = .tombstone
+            } else {
+                throw DecodingError.dataCorrupted(DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Unknown operation payload format"))
+            }
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            var container = encoder.singleValueContainer()
+            switch self {
+            case .message(let msg):
+                try container.encode(msg)
+            case .sos(let sos):
+                try container.encode(sos)
+            case .announcement(let ann):
+                try container.encode(ann)
+            case .tombstone:
+                try container.encodeNil()
+            }
+        }
     }
     
     // MARK: - Core Protocol Models
