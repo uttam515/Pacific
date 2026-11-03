@@ -3,7 +3,7 @@ import UIKit
 import Combine
 
 @MainActor
-public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
+public final class TransportManager: ObservableObject, PeerDiscoveryDelegate, MeshTransportDelegate {
     public static let didUpdateMessagesNotification = Notification.Name("OFFGRIDDidUpdateMessagesNotification")
     public static let didUpdateSOSNotification = Notification.Name("OFFGRIDDidUpdateSOSNotification")
 
@@ -16,8 +16,9 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
 
     public let localNodeId: String
     public let localDeviceName: String
+    public let meshEngine: MeshEngine
 
-    private var multipeerManager: MultipeerSessionManager?
+    private nonisolated let multipeerManager: MultipeerSessionManager
     private var bleManager: BLEManager?
     private let messageRepository: MessageRepository
     private let operationRepository: OperationQueueRepository
@@ -41,24 +42,50 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
         self.multipeerManager = multipeer
         self.bleManager = BLEManager()
 
+        let engine = MeshEngine(
+            localNodeId: nodeId,
+            localDisplayName: resolvedDisplayName,
+            messageRepository: messageRepository,
+            operationRepository: operationRepository
+        )
+        self.meshEngine = engine
+
         multipeer.delegate = self
         self.bleManager?.delegate = self
+        engine.transportDelegate = self
 
         multipeer.onDiagnosticLog = { [weak self] category, message in
             self?.logger.log(category, message)
         }
+
+        engine.onDiagnosticLog = { [weak self] category, message in
+            self?.logger.log(category, message)
+        }
+
+        engine.onMessageReceived = { _ in
+            NotificationCenter.default.post(name: TransportManager.didUpdateMessagesNotification, object: nil)
+        }
+
+        engine.onSOSReceived = { receivedMessage in
+            NotificationCenter.default.post(name: TransportManager.didUpdateSOSNotification, object: receivedMessage)
+            NotificationCenter.default.post(name: TransportManager.didUpdateMessagesNotification, object: nil)
+        }
+
+        engine.onAckReceived = { _ in
+            NotificationCenter.default.post(name: TransportManager.didUpdateMessagesNotification, object: nil)
+        }
     }
 
     public func startAllTransports() {
-        multipeerManager?.start()
-        isAdvertising = multipeerManager?.isAdvertising ?? false
-        isBrowsing = multipeerManager?.isBrowsing ?? false
+        multipeerManager.start()
+        isAdvertising = multipeerManager.isAdvertising
+        isBrowsing = multipeerManager.isBrowsing
         bleManager?.start()
         logger.log(.system, "All mesh transports activated for node \(String(localNodeId.prefix(8)))")
     }
 
     public func stopAllTransports() {
-        multipeerManager?.stop()
+        multipeerManager.stop()
         isAdvertising = false
         isBrowsing = false
         activePeers.removeAll()
@@ -67,216 +94,32 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
         logger.log(.system, "All mesh transports stopped")
     }
 
-    /// Broadcasts an already-persisted message across available radio transports using Contract v1 rc.2 framing.
-    /// Does NOT duplicate the local database insertion.
+    /// Broadcasts an already-persisted message across available mesh transports using Contract v1 rc.2 framing.
     @discardableResult
     public func broadcastPersistedMessage(_ message: OFFGRIDMessage, operationId: String) -> Bool {
-        let opPayload: ContractV1.OperationPayload
-        let entityType: ContractV1.EntityType
-
-        if message.type == .sos {
-            entityType = .sos
-            let category: ContractV1.SOSCategory
-            let contentUpper = message.content.uppercased()
-            if contentUpper.contains("MEDICAL") {
-                category = .medical
-            } else if contentUpper.contains("SUPPLIES") {
-                category = .supplies
-            } else if contentUpper.contains("OTHER") {
-                category = .other
-            } else {
-                category = .assistance
-            }
-            opPayload = .sos(ContractV1.SOSPayload(
-                text: message.content,
-                category: category,
-                location: ContractV1.SOSLocation(label: "Off-Grid Beacon", latitude: nil, longitude: nil)
-            ))
-        } else {
-            entityType = .message
-            let recipientNodeId: String
-            if message.recipientId == "*" || !ContractV1Validator.isValidUUID(message.recipientId) {
-                recipientNodeId = ContractV1.broadcastRecipientId
-            } else {
-                recipientNodeId = message.recipientId.lowercased()
-            }
-            opPayload = .message(ContractV1.MessagePayload(
-                text: message.content,
-                recipientNodeId: recipientNodeId
-            ))
-        }
-
-        let contractOp = ContractV1.Operation(
-            schemaVersion: 1,
-            operationId: operationId.lowercased(),
-            originNodeId: message.senderId.lowercased(),
-            entityId: message.id.lowercased(),
-            timestamp: Int64(message.timestamp.timeIntervalSince1970 * 1000),
-            lamportClock: max(0, message.lamportClock),
-            entityType: entityType,
-            action: .create,
-            baseVersion: 0,
-            payload: opPayload
-        )
-
-        let envelope = ContractV1.Envelope(
-            version: 1,
-            packetId: UUID().uuidString.lowercased(),
-            sourceNodeId: localNodeId.lowercased(),
-            destinationNodeId: message.recipientId == "*" ? "*" : message.recipientId.lowercased(),
-            timestamp: Int64(Date().timeIntervalSince1970 * 1000),
-            ttl: 5,
-            hopCount: 0,
-            type: .syncOp,
-            payload: .syncOp(contractOp)
-        )
-
-        do {
-            try ContractV1Validator.validateEnvelope(envelope)
-        } catch {
-            logger.log(.error, "Envelope contract validation failed for [\(message.id.prefix(8))]: \(error)")
-            messageRepository.updateStatus(id: message.id, status: .failed)
-            operationRepository.markStatus(operationId: operationId, status: .failed)
-            return false
-        }
-
-        guard let packetData = try? JSONEncoder().encode(envelope) else {
-            messageRepository.updateStatus(id: message.id, status: .failed)
-            operationRepository.markStatus(operationId: operationId, status: .failed)
-            logger.log(.error, "Serialization failed for message [\(message.id.prefix(8))]")
-            return false
-        }
-
-        var transmitted = false
-
-        // 1. Attempt Multipeer broadcast if peers are connected
-        if let multipeer = multipeerManager, multipeer.hasConnectedPeers {
-            let result = multipeer.broadcast(data: packetData)
-            switch result {
-            case .success(let peerCount):
-                transmitted = true
-                logger.log(.tx, "Dispatched SYNC_OP envelope [\(envelope.packetId.prefix(8))] for message [\(message.id.prefix(8))] to \(peerCount) peer(s); awaiting ACK")
-            case .failure(let error):
-                logger.log(.error, "Multipeer broadcast failed: \(error.localizedDescription)")
-            }
-        }
-
-        // 2. BLE peripheral/central broadcast will hook here when paired
-
-        if transmitted {
-            // Relayed over local mesh hop; not yet delivered until peer ACK is received
-            messageRepository.updateStatus(id: message.id, status: .relayed)
-            operationRepository.markStatus(operationId: operationId, status: .peerRelayed)
-            return true
-        } else {
-            // No connected peers right now: keep locally queued in SQLite without data loss
-            messageRepository.updateStatus(id: message.id, status: .queued)
-            operationRepository.markStatus(operationId: operationId, status: .queued)
-            logger.log(.tx, "No connected peers. Message [\(message.id.prefix(8))] queued locally in SQLite")
-            return false
-        }
+        return meshEngine.submitOutboundMessage(message, operationId: operationId)
     }
 
     public func flushPendingQueue() {
-        guard let multipeer = multipeerManager, multipeer.hasConnectedPeers else { return }
-        let pendingOps = operationRepository.getPendingOperations()
-
-        let eligibleOps = pendingOps.filter { $0.syncStatus == .localOnly || $0.syncStatus == .queued }
-        guard !eligibleOps.isEmpty else { return }
-
-        logger.log(.system, "Flushing \(eligibleOps.count) pending operation(s) to connected peers")
-        for op in eligibleOps {
-            if (op.entityType == .message || op.entityType == .sos),
-               let message = messageRepository.getMessage(id: op.entityId) {
-                broadcastPersistedMessage(message, operationId: op.id)
-            }
-        }
+        meshEngine.flushPendingQueue()
     }
 
-    private func sendPeerStoredAck(for op: ContractV1.Operation, packetId: String, toNodeId: String) {
-        let ack = ContractV1.Acknowledgment(
-            schemaVersion: 1,
-            ackId: UUID().uuidString.lowercased(),
-            operationId: op.operationId.lowercased(),
-            stage: .peerStored,
-            acknowledgingNodeId: self.localNodeId.lowercased(),
-            timestamp: Int64(Date().timeIntervalSince1970 * 1000),
-            packetId: packetId.lowercased(),
-            entityVersion: nil
-        )
+    // MARK: - MeshTransportDelegate
 
-        let ackEnvelope = ContractV1.Envelope(
-            version: 1,
-            packetId: UUID().uuidString.lowercased(),
-            sourceNodeId: self.localNodeId.lowercased(),
-            destinationNodeId: toNodeId.lowercased(),
-            timestamp: Int64(Date().timeIntervalSince1970 * 1000),
-            ttl: 5,
-            hopCount: 0,
-            type: .ack,
-            payload: .ack(ack)
-        )
-
-        do {
-            try ContractV1Validator.validateEnvelope(ackEnvelope)
-        } catch {
-            self.logger.log(.error, "Failed to validate PEER_STORED ACK envelope: \(error)")
-            return
-        }
-
-        guard let ackData = try? JSONEncoder().encode(ackEnvelope) else {
-            self.logger.log(.error, "Failed to encode ACK envelope for op [\(op.operationId.prefix(8))]")
-            return
-        }
-
-        multipeerManager?.broadcast(data: ackData)
-        logger.log(.ack, "Dispatched PEER_STORED ACK for op [\(op.operationId.prefix(8))] to [\(toNodeId.prefix(8))]")
+    public nonisolated func transmitPacketData(_ data: Data, toPeers: [String]?) -> Result<Int, Error> {
+        return self.multipeerManager.send(data: data, toPeers: toPeers)
     }
 
-    private func sendRecipientAck(for op: ContractV1.Operation, packetId: String, toNodeId: String) {
-        let ack = ContractV1.Acknowledgment(
-            schemaVersion: 1,
-            ackId: UUID().uuidString.lowercased(),
-            operationId: op.operationId.lowercased(),
-            stage: .recipientAcknowledged,
-            acknowledgingNodeId: self.localNodeId.lowercased(),
-            timestamp: Int64(Date().timeIntervalSince1970 * 1000),
-            packetId: packetId.lowercased(),
-            entityVersion: nil
-        )
-
-        let ackEnvelope = ContractV1.Envelope(
-            version: 1,
-            packetId: UUID().uuidString.lowercased(),
-            sourceNodeId: self.localNodeId.lowercased(),
-            destinationNodeId: toNodeId.lowercased(),
-            timestamp: Int64(Date().timeIntervalSince1970 * 1000),
-            ttl: 5,
-            hopCount: 0,
-            type: .ack,
-            payload: .ack(ack)
-        )
-
-        do {
-            try ContractV1Validator.validateEnvelope(ackEnvelope)
-        } catch {
-            self.logger.log(.error, "Failed to validate RECIPIENT_ACKNOWLEDGED envelope: \(error)")
-            return
-        }
-
-        guard let ackData = try? JSONEncoder().encode(ackEnvelope) else {
-            self.logger.log(.error, "Failed to encode RECIPIENT_ACKNOWLEDGED envelope for op [\(op.operationId.prefix(8))]")
-            return
-        }
-
-        multipeerManager?.broadcast(data: ackData)
-        logger.log(.ack, "Dispatched RECIPIENT_ACKNOWLEDGED ACK for op [\(op.operationId.prefix(8))] to [\(toNodeId.prefix(8))]")
+    public nonisolated func getConnectedPeers() -> [DiscoveredPeer] {
+        return self.multipeerManager.getConnectedPeerObjects()
     }
 
     // MARK: - PeerDiscoveryDelegate
 
     public nonisolated func didDiscoverPeer(_ peer: DiscoveredPeer) {
         Task { @MainActor in
+            let wasConnected = self.connectedPeers.contains(where: { $0.id == peer.id })
+
             if let index = self.activePeers.firstIndex(where: { $0.id == peer.id }) {
                 self.activePeers[index] = peer
             } else {
@@ -284,17 +127,19 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
             }
 
             if peer.isConnected {
-                if !self.connectedPeers.contains(where: { $0.id == peer.id }) {
+                if !wasConnected {
                     self.connectedPeers.append(peer)
-                    // Peer newly connected: flush any pending messages from local SQLite queue
-                    self.flushPendingQueue()
+                    self.meshEngine.handlePeerConnected(peer: peer)
                 }
             } else {
-                self.connectedPeers.removeAll { $0.id == peer.id }
+                if wasConnected {
+                    self.connectedPeers.removeAll { $0.id == peer.id }
+                    self.meshEngine.handlePeerDisconnected(peerId: peer.id)
+                }
             }
 
-            self.isAdvertising = self.multipeerManager?.isAdvertising ?? false
-            self.isBrowsing = self.multipeerManager?.isBrowsing ?? false
+            self.isAdvertising = self.multipeerManager.isAdvertising
+            self.isBrowsing = self.multipeerManager.isBrowsing
         }
     }
 
@@ -302,194 +147,14 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
         Task { @MainActor in
             self.activePeers.removeAll { $0.id == peerId }
             self.connectedPeers.removeAll { $0.id == peerId }
+            self.meshEngine.handlePeerDisconnected(peerId: peerId)
         }
     }
 
     public nonisolated func didReceivePacketData(_ data: Data, from peerId: String, transport: TransportType) {
         Task { @MainActor in
             self.lastReceivedPacketTime = Date()
-
-            // 1. Decode Contract v1 Envelope
-            guard let envelope = try? JSONDecoder().decode(ContractV1.Envelope.self, from: data) else {
-                self.logger.log(.error, "Malformed packet received from \(peerId) (\(data.count) bytes): not a ContractV1.Envelope")
-                return
-            }
-
-            // 2. Validate envelope invariants
-            do {
-                try ContractV1Validator.validateEnvelope(envelope)
-            } catch {
-                self.logger.log(.error, "Envelope from \(peerId) rejected by Contract v1 validator: \(error)")
-                return
-            }
-
-            // 3. Prevent self-loopback echoes
-            guard envelope.sourceNodeId.caseInsensitiveCompare(self.localNodeId) != .orderedSame else {
-                return
-            }
-
-            // 4. Route according to envelope type
-            switch envelope.type {
-            case .syncOp:
-                guard case .syncOp(let op) = envelope.payload else {
-                    self.logger.log(.error, "Envelope type SYNC_OP has unexpected payload")
-                    return
-                }
-
-                // Extract content based on payload type
-                let text: String
-                let recipientId: String
-                let msgType: MessageType
-
-                switch op.payload {
-                case .message(let msgPayload):
-                    text = msgPayload.text
-                    recipientId = msgPayload.recipientNodeId
-                    msgType = .chat
-                case .sos(let sosPayload):
-                    text = sosPayload.text
-                    recipientId = "*"
-                    msgType = .sos
-                case .announcement(let annPayload):
-                    text = annPayload.text
-                    recipientId = "*"
-                    msgType = .announcement
-                case .tombstone, .none:
-                    text = ""
-                    recipientId = "*"
-                    msgType = .chat
-                }
-
-                var receivedMessage = OFFGRIDMessage(
-                    id: op.entityId,
-                    senderId: op.originNodeId,
-                    senderName: op.entityType == .sos ? "SOS-NODE-\(String(op.originNodeId.prefix(4)))" : "Node-\(String(op.originNodeId.prefix(4)))",
-                    recipientId: recipientId,
-                    content: text,
-                    type: msgType,
-                    timestamp: Date(timeIntervalSince1970: Double(op.timestamp) / 1000.0),
-                    status: .delivered,
-                    hopCount: envelope.hopCount + 1,
-                    lamportClock: op.lamportClock
-                )
-
-                let payloadJsonString: String
-                if let p = op.payload, let pData = try? JSONEncoder().encode(p), let str = String(data: pData, encoding: .utf8) {
-                    payloadJsonString = str
-                } else {
-                    payloadJsonString = "{}"
-                }
-
-                let offgridOp = OFFGRIDOperation(
-                    id: op.operationId,
-                    entityType: op.entityType == .sos ? .sos : (op.entityType == .announcement ? .announcement : .message),
-                    entityId: op.entityId,
-                    action: op.action == .create ? .create : (op.action == .update ? .update : .delete),
-                    originNodeId: op.originNodeId,
-                    timestamp: Date(timeIntervalSince1970: Double(op.timestamp) / 1000.0),
-                    lamportClock: op.lamportClock,
-                    payloadJson: payloadJsonString,
-                    syncStatus: .peerRelayed
-                )
-
-                // Check for existing records prior to enqueueing
-                let existingMsg = self.messageRepository.getMessage(id: op.entityId)
-                let existingOp = self.operationRepository.getOperation(byOperationId: op.operationId)
-                let isDuplicate = (existingMsg != nil || existingOp != nil)
-
-                // Atomically persist message AND operation into SQLite in a single transaction
-                let insertRes: SQLiteDatabase.OperationInsertionResult
-                do {
-                    insertRes = try self.messageRepository.saveMessageWithOperation(message: receivedMessage, operation: offgridOp)
-                    if insertRes == .duplicateIdentical {
-                        self.logger.log(.rx, "Duplicate operation [\(op.operationId.prefix(8))] received (idempotent no-op)")
-                    }
-                } catch SQLiteDatabase.OperationStorageError.conflictingPayload(let opId, let existing, let new) {
-                    self.logger.log(.error, "Conflicting operation payload for [\(opId.prefix(8))]: existing='\(existing)', new='\(new)'. Transaction rolled back; dropping without ACK.")
-                    return
-                } catch {
-                    self.logger.log(.error, "Failed to persist inbound operation & message [\(op.operationId.prefix(8))]: \(error). Transaction rolled back; dropping without ACK.")
-                    return
-                }
-
-                // If not duplicate, update UI feeds
-                if !isDuplicate {
-                    if receivedMessage.type == .sos {
-                        self.logger.log(.rx, "EMERGENCY SOS RECEIVED from \(peerId): \"\(receivedMessage.content)\" [\(receivedMessage.id.prefix(8))]")
-                        NotificationCenter.default.post(name: TransportManager.didUpdateSOSNotification, object: receivedMessage)
-                    } else {
-                        self.logger.log(.rx, "Received & saved message [\(receivedMessage.id.prefix(8))] from \(peerId): \"\(receivedMessage.content)\"")
-                    }
-                    NotificationCenter.default.post(name: TransportManager.didUpdateMessagesNotification, object: nil)
-                }
-
-                // Transmit ACK only after durable storage succeeds
-                if envelope.destinationNodeId.caseInsensitiveCompare(self.localNodeId) == .orderedSame {
-                    // Local node IS the designated recipient of a direct packet
-                    self.sendRecipientAck(for: op, packetId: envelope.packetId, toNodeId: envelope.sourceNodeId)
-                } else {
-                    // Peer or intermediate node: strictly emit PEER_STORED
-                    self.sendPeerStoredAck(for: op, packetId: envelope.packetId, toNodeId: envelope.sourceNodeId)
-                }
-
-            case .ack:
-                guard case .ack(let ack) = envelope.payload else {
-                    self.logger.log(.error, "Envelope type ACK has unexpected payload")
-                    return
-                }
-
-                // Validate acknowledgment
-                do {
-                    try ContractV1Validator.validateAcknowledgment(ack)
-                } catch {
-                    self.logger.log(.error, "ACK from \(peerId) rejected by Contract v1 validator: \(error)")
-                    return
-                }
-
-                // Check loopback
-                guard ack.acknowledgingNodeId.caseInsensitiveCompare(self.localNodeId) != .orderedSame else {
-                    return
-                }
-
-                self.logger.log(.ack, "Received \(ack.stage.rawValue) ACK for op [\(ack.operationId.prefix(8))] from \(peerId)")
-
-                // Find corresponding message via operation or directly
-                let targetEntityId: String
-                if let op = self.operationRepository.getOperation(byOperationId: ack.operationId) {
-                    targetEntityId = op.entityId
-                } else {
-                    targetEntityId = ack.operationId
-                }
-
-                // Update status strictly based on ACK stage
-                switch ack.stage {
-                case .peerStored:
-                    // Peer durably stored the operation: mark as peer-stored / relayed
-                    self.operationRepository.markStatus(operationId: ack.operationId, status: .peerRelayed)
-                    self.messageRepository.updateStatus(id: targetEntityId, status: .relayed)
-                    self.logger.log(.ack, "Operation [\(ack.operationId.prefix(8))] confirmed PEER_STORED on mesh peer \(peerId)")
-
-                case .backendCommitted:
-                    // Backend committed the operation: mark backend sync complete
-                    self.operationRepository.markStatus(operationId: ack.operationId, status: .gatewaySynced)
-                    self.messageRepository.updateStatus(id: targetEntityId, status: .synced)
-                    self.logger.log(.ack, "Operation [\(ack.operationId.prefix(8))] confirmed BACKEND_COMMITTED by gateway")
-
-                case .recipientAcknowledged:
-                    // Authorized recipient explicitly acknowledged it: mark as delivered
-                    self.operationRepository.markStatus(operationId: ack.operationId, status: .peerRelayed)
-                    self.messageRepository.updateStatus(id: targetEntityId, status: .delivered)
-                    self.logger.log(.ack, "Operation [\(ack.operationId.prefix(8))] confirmed RECIPIENT_ACKNOWLEDGED by recipient \(peerId)")
-                }
-
-                // If acknowledged message was an SOS, broadcast SOS notification
-                if let ackedMsg = self.messageRepository.getMessage(id: targetEntityId), ackedMsg.type == .sos {
-                    self.logger.log(.ack, "Emergency SOS [\(targetEntityId.prefix(8))] status updated with ACK stage: \(ack.stage.rawValue)")
-                    NotificationCenter.default.post(name: TransportManager.didUpdateSOSNotification, object: ackedMsg)
-                }
-
-                NotificationCenter.default.post(name: TransportManager.didUpdateMessagesNotification, object: nil)
-            }
+            self.meshEngine.processInboundPacket(data: data, fromPeer: peerId, transport: transport)
         }
     }
 }

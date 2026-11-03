@@ -46,6 +46,15 @@ public final class MultipeerSessionManager: NSObject, @unchecked Sendable {
         return session?.connectedPeers.map(\.displayName) ?? []
     }
 
+    public func getConnectedPeerObjects() -> [DiscoveredPeer] {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let peers = session?.connectedPeers else { return [] }
+        return peers.map {
+            DiscoveredPeer(id: $0.displayName, displayName: $0.displayName, transportType: .multipeer, isConnected: true)
+        }
+    }
+
     public init(displayName: String) {
         self.myPeerId = MCPeerID(displayName: displayName)
         super.init()
@@ -133,24 +142,41 @@ public final class MultipeerSessionManager: NSObject, @unchecked Sendable {
 
     @discardableResult
     public func broadcast(data: Data) -> Result<Int, Error> {
+        return send(data: data, toPeers: nil)
+    }
+
+    @discardableResult
+    public func send(data: Data, toPeers peerNames: [String]?) -> Result<Int, Error> {
         lock.lock()
         guard let session = session else {
             lock.unlock()
             return .failure(MultipeerError.sessionUnavailable)
         }
-        let peers = session.connectedPeers
+        let allPeers = session.connectedPeers
+        let targetPeers: [MCPeerID]
+        if let names = peerNames, !names.isEmpty {
+            let matched = allPeers.filter { peer in
+                names.contains(where: { name in
+                    peer.displayName.caseInsensitiveCompare(name) == .orderedSame ||
+                    name.lowercased().contains(peer.displayName.lowercased())
+                })
+            }
+            targetPeers = matched.isEmpty ? allPeers : matched
+        } else {
+            targetPeers = allPeers
+        }
         lock.unlock()
 
-        guard !peers.isEmpty else {
+        guard !targetPeers.isEmpty else {
             return .failure(MultipeerError.noConnectedPeers)
         }
 
         do {
-            try session.send(data, toPeers: peers, with: .reliable)
-            onDiagnosticLog?(.tx, "Sent \(data.count) bytes reliably to \(peers.count) peer(s)")
-            return .success(peers.count)
+            try session.send(data, toPeers: targetPeers, with: .reliable)
+            onDiagnosticLog?(.tx, "Sent \(data.count) bytes reliably to \(targetPeers.count) peer(s)")
+            return .success(targetPeers.count)
         } catch {
-            onDiagnosticLog?(.error, "Multipeer broadcast failed: \(error.localizedDescription)")
+            onDiagnosticLog?(.error, "Multipeer send failed: \(error.localizedDescription)")
             return .failure(error)
         }
     }

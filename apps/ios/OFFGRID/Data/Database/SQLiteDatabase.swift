@@ -131,6 +131,49 @@ public final class SQLiteDatabase: @unchecked Sendable {
                 print("[SQLiteDatabase] Migration v2 failed: \(error)")
             }
         }
+        createMeshTables()
+    }
+
+    private func createMeshTables() {
+        let createProcessedPacketsTable = """
+        CREATE TABLE IF NOT EXISTS processed_packets (
+            packet_id TEXT PRIMARY KEY NOT NULL,
+            operation_id TEXT NOT NULL,
+            entity_id TEXT NOT NULL,
+            origin_node_id TEXT NOT NULL,
+            processed_at REAL NOT NULL,
+            expires_at REAL NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_processed_packets_op ON processed_packets(operation_id COLLATE NOCASE);
+        CREATE INDEX IF NOT EXISTS idx_processed_packets_entity ON processed_packets(entity_id COLLATE NOCASE);
+        """
+
+        let createReverseRoutesTable = """
+        CREATE TABLE IF NOT EXISTS reverse_routes (
+            operation_id TEXT PRIMARY KEY NOT NULL,
+            packet_id TEXT NOT NULL,
+            previous_hop_peer TEXT NOT NULL,
+            origin_node_id TEXT NOT NULL,
+            recorded_at REAL NOT NULL
+        );
+        """
+
+        let createRoutingEventsTable = """
+        CREATE TABLE IF NOT EXISTS routing_events (
+            id TEXT PRIMARY KEY NOT NULL,
+            event_type TEXT NOT NULL,
+            message_id TEXT,
+            source_node TEXT NOT NULL,
+            target_node TEXT,
+            explanation TEXT NOT NULL,
+            timestamp REAL NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_routing_events_time ON routing_events(timestamp);
+        """
+
+        execute(sql: createProcessedPacketsTable)
+        execute(sql: createReverseRoutesTable)
+        execute(sql: createRoutingEventsTable)
     }
 
     public func tableHasColumn(table: String, column: String) -> Bool {
@@ -678,5 +721,171 @@ public final class SQLiteDatabase: @unchecked Sendable {
             syncStatus: SyncStatus(rawValue: String(cString: cStatus)) ?? .localOnly,
             retryCount: Int(sqlite3_column_int(statement, 9))
         )
+    }
+
+    // MARK: - Mesh Deduplication & Reverse Routing Operations
+
+    public func isPacketProcessed(packetId: String) -> Bool {
+        return runOnQueue {
+            let sql = "SELECT 1 FROM processed_packets WHERE packet_id = ? COLLATE NOCASE LIMIT 1;"
+            var statement: OpaquePointer?
+            var exists = false
+            if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, (packetId as NSString).utf8String, -1, nil)
+                if sqlite3_step(statement) == SQLITE_ROW {
+                    exists = true
+                }
+            }
+            sqlite3_finalize(statement)
+            return exists
+        }
+    }
+
+    public func isOperationProcessed(operationId: String) -> Bool {
+        return runOnQueue {
+            let sql = "SELECT 1 FROM processed_packets WHERE operation_id = ? COLLATE NOCASE LIMIT 1;"
+            var statement: OpaquePointer?
+            var exists = false
+            if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, (operationId as NSString).utf8String, -1, nil)
+                if sqlite3_step(statement) == SQLITE_ROW {
+                    exists = true
+                }
+            }
+            sqlite3_finalize(statement)
+            return exists
+        }
+    }
+
+    public func recordProcessedPacket(packetId: String, operationId: String, entityId: String, originNodeId: String, expiresAt: Date) {
+        runOnQueue {
+            let sql = """
+            INSERT OR REPLACE INTO processed_packets (packet_id, operation_id, entity_id, origin_node_id, processed_at, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?);
+            """
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, (packetId as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 2, (operationId as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 3, (entityId as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 4, (originNodeId as NSString).utf8String, -1, nil)
+                sqlite3_bind_double(statement, 5, Date().timeIntervalSince1970)
+                sqlite3_bind_double(statement, 6, expiresAt.timeIntervalSince1970)
+                sqlite3_step(statement)
+            }
+            sqlite3_finalize(statement)
+        }
+    }
+
+    public func pruneExpiredPackets(now: Date = Date()) {
+        runOnQueue {
+            let sql = "DELETE FROM processed_packets WHERE expires_at < ?;"
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_double(statement, 1, now.timeIntervalSince1970)
+                sqlite3_step(statement)
+            }
+            sqlite3_finalize(statement)
+        }
+    }
+
+    public func recordReverseRoute(operationId: String, packetId: String, previousHopPeer: String, originNodeId: String) {
+        runOnQueue {
+            let sql = """
+            INSERT OR REPLACE INTO reverse_routes (operation_id, packet_id, previous_hop_peer, origin_node_id, recorded_at)
+            VALUES (?, ?, ?, ?, ?);
+            """
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, (operationId as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 2, (packetId as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 3, (previousHopPeer as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 4, (originNodeId as NSString).utf8String, -1, nil)
+                sqlite3_bind_double(statement, 5, Date().timeIntervalSince1970)
+                sqlite3_step(statement)
+            }
+            sqlite3_finalize(statement)
+        }
+    }
+
+    public func getReverseRoute(operationId: String) -> (previousHopPeer: String, originNodeId: String)? {
+        return runOnQueue {
+            let sql = "SELECT previous_hop_peer, origin_node_id FROM reverse_routes WHERE operation_id = ? COLLATE NOCASE LIMIT 1;"
+            var statement: OpaquePointer?
+            var result: (previousHopPeer: String, originNodeId: String)? = nil
+            if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, (operationId as NSString).utf8String, -1, nil)
+                if sqlite3_step(statement) == SQLITE_ROW {
+                    if let cPeer = sqlite3_column_text(statement, 0),
+                       let cOrigin = sqlite3_column_text(statement, 1) {
+                        result = (previousHopPeer: String(cString: cPeer), originNodeId: String(cString: cOrigin))
+                    }
+                }
+            }
+            sqlite3_finalize(statement)
+            return result
+        }
+    }
+
+    public func recordRoutingEvent(id: String, eventType: String, messageId: String?, sourceNode: String, targetNode: String?, explanation: String) {
+        runOnQueue {
+            let sql = """
+            INSERT INTO routing_events (id, event_type, message_id, source_node, target_node, explanation, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?);
+            """
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, (id as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 2, (eventType as NSString).utf8String, -1, nil)
+                if let msgId = messageId {
+                    sqlite3_bind_text(statement, 3, (msgId as NSString).utf8String, -1, nil)
+                } else {
+                    sqlite3_bind_null(statement, 3)
+                }
+                sqlite3_bind_text(statement, 4, (sourceNode as NSString).utf8String, -1, nil)
+                if let tgt = targetNode {
+                    sqlite3_bind_text(statement, 5, (tgt as NSString).utf8String, -1, nil)
+                } else {
+                    sqlite3_bind_null(statement, 5)
+                }
+                sqlite3_bind_text(statement, 6, (explanation as NSString).utf8String, -1, nil)
+                sqlite3_bind_double(statement, 7, Date().timeIntervalSince1970)
+                sqlite3_step(statement)
+            }
+            sqlite3_finalize(statement)
+        }
+    }
+
+    public func fetchRecentRoutingEvents(limit: Int = 50) -> [(id: String, eventType: String, messageId: String?, sourceNode: String, targetNode: String?, explanation: String, timestamp: Date)] {
+        return runOnQueue {
+            let sql = "SELECT id, event_type, message_id, source_node, target_node, explanation, timestamp FROM routing_events ORDER BY timestamp DESC LIMIT ?;"
+            var statement: OpaquePointer?
+            var events: [(id: String, eventType: String, messageId: String?, sourceNode: String, targetNode: String?, explanation: String, timestamp: Date)] = []
+            if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_int(statement, 1, Int32(limit))
+                while sqlite3_step(statement) == SQLITE_ROW {
+                    guard let cId = sqlite3_column_text(statement, 0),
+                          let cType = sqlite3_column_text(statement, 1),
+                          let cSource = sqlite3_column_text(statement, 3),
+                          let cExp = sqlite3_column_text(statement, 5) else {
+                        continue
+                    }
+                    let msgId = sqlite3_column_text(statement, 2).map { String(cString: $0) }
+                    let tgt = sqlite3_column_text(statement, 4).map { String(cString: $0) }
+                    let ts = Date(timeIntervalSince1970: sqlite3_column_double(statement, 6))
+                    events.append((
+                        id: String(cString: cId),
+                        eventType: String(cString: cType),
+                        messageId: msgId,
+                        sourceNode: String(cString: cSource),
+                        targetNode: tgt,
+                        explanation: String(cString: cExp),
+                        timestamp: ts
+                    ))
+                }
+            }
+            sqlite3_finalize(statement)
+            return events
+        }
     }
 }

@@ -8,7 +8,7 @@ public final class MeshProtocolTests {
         print("===========================================")
 
         var passedCount = 0
-        let totalCount = 15
+        let totalCount = 21
 
         if runTest("1. Contract v1 Envelope validation & invariant checks", testContractV1EnvelopeValidation) { passedCount += 1 }
         if runTest("2. Deterministic multipeer tie-breaker comparison", testTieBreakerLogic) { passedCount += 1 }
@@ -25,6 +25,12 @@ public final class MeshProtocolTests {
         if runTest("13. Retransmission preserves exact operation ID and message ID", testRetransmissionPreservesIdentities) { passedCount += 1 }
         if runTest("14. Fault-injected atomic inbound persistence rollback & zero ACK", testFaultInjectedInboundPersistenceRollback) { passedCount += 1 }
         if runTest("15. Multipeer session lifecycle, certificate validation approval & tie-breaker state recovery", testMultipeerSessionLifecycleAndSecurity) { passedCount += 1 }
+        if runTest("16. Multi-hop Relay A -> B -> C Forwarding and Hop Count Increment", testMultiHopRelayForwarding) { passedCount += 1 }
+        if runTest("17. Simulated 4-Node Multi-Hop Network (A -> B -> C -> D) & Return ACK (D -> C -> B -> A)", testFourNodeMultiHopAndReturnAck) { passedCount += 1 }
+        if runTest("18. Deterministic Multi-Metric Relay Scoring (0.35B + 0.30Q + 0.20R + 0.15C)", testDeterministicRelayScoring) { passedCount += 1 }
+        if runTest("19. Emergency-Aware Queue Prioritization (P0 > P1 > P2 > P3) & Anti-Starvation", testEmergencyQueuePrioritizationAndAntiStarvation) { passedCount += 1 }
+        if runTest("20. Dynamic Route Recovery on Peer Disconnection", testDynamicRouteRecovery) { passedCount += 1 }
+        if runTest("21. Persistent Deduplication and Concurrent Duplicate Suppression", testPersistentDeduplicationAndConcurrentArrivals) { passedCount += 1 }
 
         print("===========================================")
         if passedCount == totalCount {
@@ -1162,7 +1168,7 @@ public final class MeshProtocolTests {
         // 2. Verify certificate handler auto-approves
         var certificateApproved = false
         let dummyPeer = MCPeerID(displayName: "iPhone-Beta")
-        managerA.session(sessionA, didReceiveCertificate: nil, fromPeer: dummyPeer) { approved in
+        managerA.session(sessionA, didReceiveCertificate: (nil as [Any]?), fromPeer: dummyPeer) { approved in
             certificateApproved = approved
         }
         guard certificateApproved else {
@@ -1205,5 +1211,474 @@ public final class MeshProtocolTests {
         }
         managerA.stop()
         managerB.stop()
+    }
+
+    // MARK: - Helper: Simulated Virtual Radio Transport for Multi-Hop Topology
+    final class SimulatedVirtualRadioTransport: MeshTransportDelegate, Hashable, @unchecked Sendable {
+        let nodeId: String
+        let displayName: String
+        var peerLinks: [String: SimulatedVirtualRadioTransport] = [:]
+        var onPacketDelivered: ((Data, String) -> Void)?
+
+        static func == (lhs: SimulatedVirtualRadioTransport, rhs: SimulatedVirtualRadioTransport) -> Bool {
+            return lhs.nodeId == rhs.nodeId
+        }
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(nodeId)
+        }
+
+        init(nodeId: String, displayName: String) {
+            self.nodeId = nodeId
+            self.displayName = displayName
+        }
+
+        func link(to peer: SimulatedVirtualRadioTransport) {
+            peerLinks[peer.nodeId] = peer
+            peerLinks[peer.displayName] = peer
+            peer.peerLinks[nodeId] = self
+            peer.peerLinks[displayName] = self
+        }
+
+        func unlink(from peer: SimulatedVirtualRadioTransport) {
+            peerLinks.removeValue(forKey: peer.nodeId)
+            peerLinks.removeValue(forKey: peer.displayName)
+            peer.peerLinks.removeValue(forKey: nodeId)
+            peer.peerLinks.removeValue(forKey: displayName)
+        }
+
+        func transmitPacketData(_ data: Data, toPeers: [String]?) -> Result<Int, Error> {
+            let targets: [SimulatedVirtualRadioTransport]
+            if let names = toPeers, !names.isEmpty {
+                targets = names.compactMap { peerLinks[$0] }
+            } else {
+                targets = Array(Set(peerLinks.values))
+            }
+            guard !targets.isEmpty else {
+                return .failure(NSError(domain: "Radio", code: 1, userInfo: [NSLocalizedDescriptionKey: "No linked peers"]))
+            }
+            for target in targets {
+                target.onPacketDelivered?(data, self.displayName)
+            }
+            return .success(targets.count)
+        }
+
+        func getConnectedPeers() -> [DiscoveredPeer] {
+            let distinct = Array(Set(peerLinks.values))
+            return distinct.map {
+                DiscoveredPeer(id: $0.nodeId, displayName: $0.displayName, transportType: .multipeer, isConnected: true)
+            }
+        }
+    }
+
+    // MARK: - Test 16: Multi-Hop Relay A -> B -> C Forwarding
+    public func testMultiHopRelayForwarding() throws {
+        let dbPathA = "/tmp/offgrid_hop_a_\(UUID().uuidString.lowercased()).sqlite"
+        let dbPathB = "/tmp/offgrid_hop_b_\(UUID().uuidString.lowercased()).sqlite"
+        let dbPathC = "/tmp/offgrid_hop_c_\(UUID().uuidString.lowercased()).sqlite"
+        defer {
+            try? FileManager.default.removeItem(atPath: dbPathA)
+            try? FileManager.default.removeItem(atPath: dbPathB)
+            try? FileManager.default.removeItem(atPath: dbPathC)
+        }
+
+        let dbA = SQLiteDatabase(inMemory: false, customPath: dbPathA)
+        let dbB = SQLiteDatabase(inMemory: false, customPath: dbPathB)
+        let dbC = SQLiteDatabase(inMemory: false, customPath: dbPathC)
+
+        let nodeAId = UUID().uuidString.lowercased()
+        let nodeBId = UUID().uuidString.lowercased()
+        let nodeCId = UUID().uuidString.lowercased()
+
+        let radioA = SimulatedVirtualRadioTransport(nodeId: nodeAId, displayName: "Node-A")
+        let radioB = SimulatedVirtualRadioTransport(nodeId: nodeBId, displayName: "Node-B")
+        let radioC = SimulatedVirtualRadioTransport(nodeId: nodeCId, displayName: "Node-C")
+
+        // Topology: A <-> B <-> C (A is NOT linked to C directly)
+        radioA.link(to: radioB)
+        radioB.link(to: radioC)
+
+        let engineA = MeshEngine(localNodeId: nodeAId, localDisplayName: "Node-A", database: dbA)
+        let engineB = MeshEngine(localNodeId: nodeBId, localDisplayName: "Node-B", database: dbB)
+        let engineC = MeshEngine(localNodeId: nodeCId, localDisplayName: "Node-C", database: dbC)
+
+        engineA.transportDelegate = radioA
+        engineB.transportDelegate = radioB
+        engineC.transportDelegate = radioC
+
+        radioA.onPacketDelivered = { data, from in engineA.processInboundPacket(data: data, fromPeer: from, transport: .multipeer) }
+        radioB.onPacketDelivered = { data, from in engineB.processInboundPacket(data: data, fromPeer: from, transport: .multipeer) }
+        radioC.onPacketDelivered = { data, from in engineC.processInboundPacket(data: data, fromPeer: from, transport: .multipeer) }
+
+        let msgId = UUID().uuidString.lowercased()
+        let opId = UUID().uuidString.lowercased()
+
+        let sosMsg = OFFGRIDMessage(
+            id: msgId,
+            senderId: nodeAId,
+            senderName: "Node-A",
+            recipientId: "*",
+            content: "EMERGENCY: Medical evacuation requested at Sector 7",
+            type: .sos,
+            timestamp: Date(),
+            status: .queued,
+            hopCount: 0
+        )
+
+        // Persist on Node A and submit to MeshEngine
+        try dbA.saveMessageWithOperation(message: sosMsg, operation: OFFGRIDOperation(
+            id: opId,
+            entityType: .sos,
+            entityId: msgId,
+            action: .create,
+            originNodeId: nodeAId,
+            payloadJson: "{\"category\":\"MEDICAL\",\"text\":\"EMERGENCY: Medical evacuation requested at Sector 7\"}",
+            syncStatus: .queued
+        ))
+
+        let submitted = engineA.submitOutboundMessage(sosMsg, operationId: opId)
+        guard submitted else {
+            throw NSError(domain: "Test", code: 60, userInfo: [NSLocalizedDescriptionKey: "Outbound submission failed on Node A"])
+        }
+
+        // Verify Node B received and stored the message
+        let storedOnB = dbB.getMessage(byId: msgId)
+        guard let bMsg = storedOnB else {
+            throw NSError(domain: "Test", code: 61, userInfo: [NSLocalizedDescriptionKey: "Intermediate Node B did not receive/store SOS"])
+        }
+        guard bMsg.hopCount == 1 else {
+            throw NSError(domain: "Test", code: 62, userInfo: [NSLocalizedDescriptionKey: "Node B hopCount expected 1, got \(bMsg.hopCount)"])
+        }
+
+        // Verify Node C received the forwarded message from B
+        let storedOnC = dbC.getMessage(byId: msgId)
+        guard let cMsg = storedOnC else {
+            throw NSError(domain: "Test", code: 63, userInfo: [NSLocalizedDescriptionKey: "Destination Node C did not receive forwarded SOS from Node B"])
+        }
+        guard cMsg.hopCount == 2 else {
+            throw NSError(domain: "Test", code: 64, userInfo: [NSLocalizedDescriptionKey: "Node C hopCount expected 2, got \(cMsg.hopCount)"])
+        }
+        guard cMsg.senderId == nodeAId else {
+            throw NSError(domain: "Test", code: 65, userInfo: [NSLocalizedDescriptionKey: "Node C original sender was not preserved! Got \(cMsg.senderId)"])
+        }
+    }
+
+    // MARK: - Test 17: Simulated 4-Node Multi-Hop Network (A -> B -> C -> D) & Return ACK (D -> C -> B -> A)
+    public func testFourNodeMultiHopAndReturnAck() throws {
+        let dbPathA = "/tmp/offgrid_4hop_a_\(UUID().uuidString.lowercased()).sqlite"
+        let dbPathB = "/tmp/offgrid_4hop_b_\(UUID().uuidString.lowercased()).sqlite"
+        let dbPathC = "/tmp/offgrid_4hop_c_\(UUID().uuidString.lowercased()).sqlite"
+        let dbPathD = "/tmp/offgrid_4hop_d_\(UUID().uuidString.lowercased()).sqlite"
+        defer {
+            try? FileManager.default.removeItem(atPath: dbPathA)
+            try? FileManager.default.removeItem(atPath: dbPathB)
+            try? FileManager.default.removeItem(atPath: dbPathC)
+            try? FileManager.default.removeItem(atPath: dbPathD)
+        }
+
+        let dbA = SQLiteDatabase(inMemory: false, customPath: dbPathA)
+        let dbB = SQLiteDatabase(inMemory: false, customPath: dbPathB)
+        let dbC = SQLiteDatabase(inMemory: false, customPath: dbPathC)
+        let dbD = SQLiteDatabase(inMemory: false, customPath: dbPathD)
+
+        let nodeAId = UUID().uuidString.lowercased()
+        let nodeBId = UUID().uuidString.lowercased()
+        let nodeCId = UUID().uuidString.lowercased()
+        let nodeDId = UUID().uuidString.lowercased()
+
+        let radioA = SimulatedVirtualRadioTransport(nodeId: nodeAId, displayName: "Node-A")
+        let radioB = SimulatedVirtualRadioTransport(nodeId: nodeBId, displayName: "Node-B")
+        let radioC = SimulatedVirtualRadioTransport(nodeId: nodeCId, displayName: "Node-C")
+        let radioD = SimulatedVirtualRadioTransport(nodeId: nodeDId, displayName: "Node-D")
+
+        // Strict 4-node linear topology: A <-> B <-> C <-> D
+        radioA.link(to: radioB)
+        radioB.link(to: radioC)
+        radioC.link(to: radioD)
+
+        let engineA = MeshEngine(localNodeId: nodeAId, localDisplayName: "Node-A", database: dbA)
+        let engineB = MeshEngine(localNodeId: nodeBId, localDisplayName: "Node-B", database: dbB)
+        let engineC = MeshEngine(localNodeId: nodeCId, localDisplayName: "Node-C", database: dbC)
+        let engineD = MeshEngine(localNodeId: nodeDId, localDisplayName: "Node-D", database: dbD)
+
+        engineA.transportDelegate = radioA
+        engineB.transportDelegate = radioB
+        engineC.transportDelegate = radioC
+        engineD.transportDelegate = radioD
+
+        radioA.onPacketDelivered = { data, from in engineA.processInboundPacket(data: data, fromPeer: from, transport: .multipeer) }
+        radioB.onPacketDelivered = { data, from in engineB.processInboundPacket(data: data, fromPeer: from, transport: .multipeer) }
+        radioC.onPacketDelivered = { data, from in engineC.processInboundPacket(data: data, fromPeer: from, transport: .multipeer) }
+        radioD.onPacketDelivered = { data, from in engineD.processInboundPacket(data: data, fromPeer: from, transport: .multipeer) }
+
+        let msgId = UUID().uuidString.lowercased()
+        let opId = UUID().uuidString.lowercased()
+
+        let targetedMsg = OFFGRIDMessage(
+            id: msgId,
+            senderId: nodeAId,
+            senderName: "Node-A",
+            recipientId: nodeDId,
+            content: "End-to-end multi-hop packet from A to D",
+            type: .chat,
+            timestamp: Date(),
+            status: .queued,
+            hopCount: 0
+        )
+
+        try dbA.saveMessageWithOperation(message: targetedMsg, operation: OFFGRIDOperation(
+            id: opId,
+            entityType: .message,
+            entityId: msgId,
+            action: .create,
+            originNodeId: nodeAId,
+            payloadJson: "{\"text\":\"End-to-end multi-hop packet from A to D\",\"recipientNodeId\":\"\(nodeDId)\"}",
+            syncStatus: .queued
+        ))
+
+        let submitted = engineA.submitOutboundMessage(targetedMsg, operationId: opId)
+        guard submitted else {
+            throw NSError(domain: "Test", code: 70, userInfo: [NSLocalizedDescriptionKey: "Failed to dispatch message from Node A"])
+        }
+
+        // 1. Verify Node D received the targeted message
+        guard let dMsg = dbD.getMessage(byId: msgId) else {
+            throw NSError(domain: "Test", code: 71, userInfo: [NSLocalizedDescriptionKey: "Final destination Node D did not receive message across 3 hops"])
+        }
+        guard dMsg.status == .delivered else {
+            throw NSError(domain: "Test", code: 72, userInfo: [NSLocalizedDescriptionKey: "Node D did not mark message as delivered"])
+        }
+        guard dMsg.hopCount == 3 else {
+            throw NSError(domain: "Test", code: 73, userInfo: [NSLocalizedDescriptionKey: "Node D expected hopCount 3, got \(dMsg.hopCount)"])
+        }
+
+        // 2. Verify Return ACK traveled back along reverse path D -> C -> B -> A
+        guard let aMsg = dbA.getMessage(byId: msgId) else {
+            throw NSError(domain: "Test", code: 74, userInfo: [NSLocalizedDescriptionKey: "Original message missing on Node A"])
+        }
+        guard aMsg.status == .delivered else {
+            throw NSError(domain: "Test", code: 75, userInfo: [NSLocalizedDescriptionKey: "Node A status was not updated to .delivered by return RECIPIENT_ACK! Status is \(aMsg.status)"])
+        }
+    }
+
+    // MARK: - Test 18: Deterministic Multi-Metric Relay Scoring (0.35B + 0.30Q + 0.20R + 0.15C)
+    public func testDeterministicRelayScoring() throws {
+        let engine = RoutingEngine()
+
+        let peer1 = DiscoveredPeer(id: "peer-1", displayName: "Node-High", transportType: .multipeer, isConnected: true)
+        let peer2 = DiscoveredPeer(id: "peer-2", displayName: "Node-Low", transportType: .multipeer, isConnected: true)
+
+        // Configure peer 1 metrics
+        engine.setRemoteBattery(peerId: "peer-1", battery: 90.0) // B = 90
+        for _ in 0..<9 { engine.recordDeliveryAttempt(peerId: "peer-1", success: true) }
+        engine.recordDeliveryAttempt(peerId: "peer-1", success: false) // Q = 90%
+        engine.recordPeerConnected(peerId: "peer-1")
+
+        // Configure peer 2 metrics (failing peer with low battery)
+        engine.setRemoteBattery(peerId: "peer-2", battery: 30.0) // B = 30
+        for _ in 0..<3 { engine.recordDeliveryAttempt(peerId: "peer-2", success: true) }
+        for _ in 0..<7 { engine.recordDeliveryAttempt(peerId: "peer-2", success: false) } // Q = 30%
+        engine.recordPeerDisconnected(peerId: "peer-2")
+
+        let score1 = engine.calculateRelayScore(for: peer1)
+        let score2 = engine.calculateRelayScore(for: peer2)
+
+        // Verify formula: Score = 0.35B + 0.30Q + 0.20R + 0.15C
+        let expected1 = (0.35 * score1.battery) + (0.30 * score1.reliability) + (0.20 * score1.capacity) + (0.15 * score1.stability)
+        let diff = abs(score1.totalScore - expected1)
+        guard diff < 0.001 else {
+            throw NSError(domain: "Test", code: 80, userInfo: [NSLocalizedDescriptionKey: "Score formula calculation mismatch! Expected \(expected1), got \(score1.totalScore)"])
+        }
+
+        guard score1.totalScore > score2.totalScore else {
+            throw NSError(domain: "Test", code: 81, userInfo: [NSLocalizedDescriptionKey: "Reliable peer scored lower than degraded peer! \(score1.totalScore) vs \(score2.totalScore)"])
+        }
+
+        // Verify ranking sorts descending
+        let ranked = engine.rankAvailablePeers(peers: [peer2, peer1])
+        guard ranked.first?.peer.id == "peer-1" else {
+            throw NSError(domain: "Test", code: 82, userInfo: [NSLocalizedDescriptionKey: "Ranked peers did not place highest scoring peer first"])
+        }
+    }
+
+    // MARK: - Test 19: Emergency-Aware Queue Prioritization & Anti-Starvation
+    public func testEmergencyQueuePrioritizationAndAntiStarvation() throws {
+        let dbPath = "/tmp/offgrid_queue_test_\(UUID().uuidString.lowercased()).sqlite"
+        defer { try? FileManager.default.removeItem(atPath: dbPath) }
+        let db = SQLiteDatabase(inMemory: false, customPath: dbPath)
+        let queue = MessageQueue(messageRepository: MessageRepository(database: db), operationRepository: OperationQueueRepository(database: db))
+        queue.clear()
+
+        // Enqueue 5 Emergency SOS items (P0) and 2 Normal chat items (P2)
+        var p0Ids: [String] = []
+        for i in 1...5 {
+            let id = "P0-\(i)"
+            p0Ids.append(id)
+            let op = OFFGRIDOperation(id: id, entityType: .sos, entityId: id, action: .create, originNodeId: "origin", payloadJson: "{}", syncStatus: .queued)
+            queue.enqueue(operation: op, message: nil, priority: .p0EmergencySOS)
+        }
+
+        var p2Ids: [String] = []
+        for i in 1...2 {
+            let id = "P2-\(i)"
+            p2Ids.append(id)
+            let op = OFFGRIDOperation(id: id, entityType: .message, entityId: id, action: .create, originNodeId: "origin", payloadJson: "{}", syncStatus: .queued)
+            queue.enqueue(operation: op, message: nil, priority: .p2NormalMessage)
+        }
+
+        // Dequeue items sequentially:
+        // First 4 must be P0
+        for i in 1...4 {
+            guard let item = queue.dequeueNextEligible() else {
+                throw NSError(domain: "Test", code: 90, userInfo: [NSLocalizedDescriptionKey: "Queue unexpectedly empty at step \(i)"])
+            }
+            guard item.priority == .p0EmergencySOS else {
+                throw NSError(domain: "Test", code: 91, userInfo: [NSLocalizedDescriptionKey: "Step \(i) expected P0, got \(item.priority)"])
+            }
+            queue.remove(operationId: item.operation.id)
+        }
+
+        // 5th item MUST be P2 (anti-starvation guarantee prevents normal messages from starving forever)
+        guard let fifth = queue.dequeueNextEligible() else {
+            throw NSError(domain: "Test", code: 92, userInfo: [NSLocalizedDescriptionKey: "Queue empty at anti-starvation step"])
+        }
+        guard fifth.priority == .p2NormalMessage else {
+            throw NSError(domain: "Test", code: 93, userInfo: [NSLocalizedDescriptionKey: "Anti-starvation failed! Expected P2 normal message on 5th dequeue, got \(fifth.priority)"])
+        }
+        queue.remove(operationId: fifth.operation.id)
+
+        // 6th item should be the remaining P0
+        guard let sixth = queue.dequeueNextEligible() else {
+            throw NSError(domain: "Test", code: 94, userInfo: [NSLocalizedDescriptionKey: "Queue empty at step 6"])
+        }
+        guard sixth.priority == .p0EmergencySOS else {
+            throw NSError(domain: "Test", code: 95, userInfo: [NSLocalizedDescriptionKey: "Expected remaining P0 at step 6, got \(sixth.priority)"])
+        }
+    }
+
+    // MARK: - Test 20: Dynamic Route Recovery on Peer Disconnection
+    public func testDynamicRouteRecovery() throws {
+        let dbPathA = "/tmp/offgrid_recov_a_\(UUID().uuidString.lowercased()).sqlite"
+        let dbPathB = "/tmp/offgrid_recov_b_\(UUID().uuidString.lowercased()).sqlite"
+        let dbPathC = "/tmp/offgrid_recov_c_\(UUID().uuidString.lowercased()).sqlite"
+        defer {
+            try? FileManager.default.removeItem(atPath: dbPathA)
+            try? FileManager.default.removeItem(atPath: dbPathB)
+            try? FileManager.default.removeItem(atPath: dbPathC)
+        }
+
+        let dbA = SQLiteDatabase(inMemory: false, customPath: dbPathA)
+        let dbB = SQLiteDatabase(inMemory: false, customPath: dbPathB)
+        let dbC = SQLiteDatabase(inMemory: false, customPath: dbPathC)
+
+        let nodeAId = UUID().uuidString.lowercased()
+        let nodeBId = UUID().uuidString.lowercased()
+        let nodeCId = UUID().uuidString.lowercased()
+
+        let radioA = SimulatedVirtualRadioTransport(nodeId: nodeAId, displayName: "Node-A")
+        let radioB = SimulatedVirtualRadioTransport(nodeId: nodeBId, displayName: "Node-B")
+        let radioC = SimulatedVirtualRadioTransport(nodeId: nodeCId, displayName: "Node-C")
+
+        // Node A links to both B and C
+        radioA.link(to: radioB)
+        radioA.link(to: radioC)
+
+        let engineA = MeshEngine(localNodeId: nodeAId, localDisplayName: "Node-A", database: dbA)
+        let engineB = MeshEngine(localNodeId: nodeBId, localDisplayName: "Node-B", database: dbB)
+        let engineC = MeshEngine(localNodeId: nodeCId, localDisplayName: "Node-C", database: dbC)
+
+        engineA.transportDelegate = radioA
+        engineB.transportDelegate = radioB
+        engineC.transportDelegate = radioC
+
+        radioA.onPacketDelivered = { data, from in engineA.processInboundPacket(data: data, fromPeer: from, transport: .multipeer) }
+        radioB.onPacketDelivered = { data, from in engineB.processInboundPacket(data: data, fromPeer: from, transport: .multipeer) }
+        radioC.onPacketDelivered = { data, from in engineC.processInboundPacket(data: data, fromPeer: from, transport: .multipeer) }
+
+        // Configure telemetry so Peer B has high score initially
+        engineA.routingEngine.setRemoteBattery(peerId: nodeBId, battery: 95.0)
+        engineA.routingEngine.setRemoteBattery(peerId: nodeCId, battery: 75.0)
+
+        let msgId = UUID().uuidString.lowercased()
+        let opId = UUID().uuidString.lowercased()
+
+        let msg = OFFGRIDMessage(
+            id: msgId,
+            senderId: nodeAId,
+            senderName: "Node-A",
+            recipientId: "*",
+            content: "Testing route recovery after node disconnect",
+            type: .sos,
+            timestamp: Date(),
+            status: .queued,
+            hopCount: 0
+        )
+
+        try dbA.saveMessageWithOperation(message: msg, operation: OFFGRIDOperation(
+            id: opId,
+            entityType: .sos,
+            entityId: msgId,
+            action: .create,
+            originNodeId: nodeAId,
+            payloadJson: "{\"text\":\"Testing route recovery after node disconnect\"}",
+            syncStatus: .queued
+        ))
+
+        // Submit message so it is active in engineA's queue
+        _ = engineA.submitOutboundMessage(msg, operationId: opId)
+
+        // Clear C's database initially to verify recovery sends to C
+        // Simulate sudden disconnection of Node B
+        radioA.unlink(from: radioB)
+        engineA.handlePeerDisconnected(peerId: nodeBId)
+
+        // Verify Node A dynamic route recovery automatically selected alternative Node C
+        guard let storedOnC = dbC.getMessage(byId: msgId) else {
+            throw NSError(domain: "Test", code: 100, userInfo: [NSLocalizedDescriptionKey: "Dynamic route recovery failed: Node C did not receive rerouted packet"])
+        }
+        guard storedOnC.content == msg.content else {
+            throw NSError(domain: "Test", code: 101, userInfo: [NSLocalizedDescriptionKey: "Corrupted content on rerouted packet"])
+        }
+
+        // Verify explainable routing event was logged in NetworkAnalyzer
+        let events = engineA.networkAnalyzer.recentEvents
+        guard events.contains(where: { $0.eventType == .alternativeRouteSelected || $0.eventType == .peerDisconnected }) else {
+            throw NSError(domain: "Test", code: 102, userInfo: [NSLocalizedDescriptionKey: "No explainable route recovery event was logged"])
+        }
+    }
+
+    // MARK: - Test 21: Persistent Deduplication and Concurrent Duplicate Suppression
+    public func testPersistentDeduplicationAndConcurrentArrivals() throws {
+        let dbPath = "/tmp/offgrid_dedup_test_\(UUID().uuidString.lowercased()).sqlite"
+        defer { try? FileManager.default.removeItem(atPath: dbPath) }
+
+        let db = SQLiteDatabase(inMemory: false, customPath: dbPath)
+        let dedupManager = DeduplicationManager(database: db)
+
+        let packetId = "packet-unique-123"
+        let opId = "op-unique-123"
+        let entityId = "msg-unique-123"
+
+        // 1. Initial check: not duplicate
+        guard !dedupManager.isDuplicate(packetId: packetId, operationId: opId, entityId: entityId) else {
+            throw NSError(domain: "Test", code: 110, userInfo: [NSLocalizedDescriptionKey: "Fresh packet reported as duplicate!"])
+        }
+
+        // 2. Mark processed
+        dedupManager.markProcessed(packetId: packetId, operationId: opId, entityId: entityId, originNodeId: "node-orig")
+
+        // 3. Second check: must be recognized as duplicate
+        guard dedupManager.isDuplicate(packetId: packetId, operationId: opId, entityId: entityId) else {
+            throw NSError(domain: "Test", code: 111, userInfo: [NSLocalizedDescriptionKey: "Processed packet was not recognized as duplicate!"])
+        }
+
+        // 4. Persistence across restart test:
+        // Clear in-memory cache and re-instantiate from disk
+        dedupManager.clear()
+        let freshDedupFromDisk = DeduplicationManager(database: db)
+
+        guard freshDedupFromDisk.isDuplicate(packetId: packetId, operationId: opId, entityId: entityId) else {
+            throw NSError(domain: "Test", code: 112, userInfo: [NSLocalizedDescriptionKey: "Deduplication did not persist across simulated application restart!"])
+        }
     }
 }

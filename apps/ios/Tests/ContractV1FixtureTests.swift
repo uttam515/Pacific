@@ -303,7 +303,7 @@ public final class ContractV1FixtureTests {
         
         // Verify lowercase UUIDv4 format
         let uuidPattern = "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-        guard nodeId.range(of: uuidPattern, options: .regularExpression) != nil else {
+        guard nodeId.range(of: uuidPattern, options: String.CompareOptions.regularExpression) != nil else {
             print("  [FAIL] Node ID is not a valid lowercase UUIDv4: \(nodeId)")
             return false
         }
@@ -316,7 +316,7 @@ public final class ContractV1FixtureTests {
         }
         
         // Verify isExcludedFromBackup resource value
-        guard let resourceValues = try? markerUrl.resourceValues(forKeys: [.isExcludedFromBackupKey]),
+        guard let resourceValues = try? markerUrl.resourceValues(forKeys: [URLResourceKey.isExcludedFromBackupKey]),
               resourceValues.isExcludedFromBackup == true else {
             print("  [FAIL] Marker file is not marked isExcludedFromBackup = true")
             return false

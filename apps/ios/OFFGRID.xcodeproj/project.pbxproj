@@ -38,6 +38,13 @@
 		B1B2C3D4E5F6000100000001 /* Protocol/ContractV1Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000100000001 /* Protocol/ContractV1Models.swift */; };
 		B1B2C3D4E5F6000100000002 /* Protocol/ContractV1Validators.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000100000002 /* Protocol/ContractV1Validators.swift */; };
 		B1B2C3D4E5F6000100000003 /* Security/InstallationIdentityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000100000003 /* Security/InstallationIdentityManager.swift */; };
+		B1B2C3D4E5F6000300000001 /* Networking/Mesh/MeshEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000300000001 /* Networking/Mesh/MeshEngine.swift */; };
+		B1B2C3D4E5F6000300000002 /* Networking/Mesh/DeduplicationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000300000002 /* Networking/Mesh/DeduplicationManager.swift */; };
+		B1B2C3D4E5F6000300000003 /* Networking/Mesh/AcknowledgementManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000300000003 /* Networking/Mesh/AcknowledgementManager.swift */; };
+		B1B2C3D4E5F6000300000004 /* Networking/Mesh/MessageQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000300000004 /* Networking/Mesh/MessageQueue.swift */; };
+		B1B2C3D4E5F6000300000005 /* Networking/Mesh/NetworkAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000300000005 /* Networking/Mesh/NetworkAnalyzer.swift */; };
+		B1B2C3D4E5F6000300000006 /* Networking/Mesh/PeerTrustManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000300000006 /* Networking/Mesh/PeerTrustManager.swift */; };
+		B1B2C3D4E5F6000300000007 /* Networking/Routing/RoutingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000300000007 /* Networking/Routing/RoutingEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -74,6 +81,13 @@
 		A1B2C3D4E5F6000100000001 /* Protocol/ContractV1Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocol/ContractV1Models.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6000100000002 /* Protocol/ContractV1Validators.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocol/ContractV1Validators.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6000100000003 /* Security/InstallationIdentityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Security/InstallationIdentityManager.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000300000001 /* Networking/Mesh/MeshEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Mesh/MeshEngine.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000300000002 /* Networking/Mesh/DeduplicationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Mesh/DeduplicationManager.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000300000003 /* Networking/Mesh/AcknowledgementManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Mesh/AcknowledgementManager.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000300000004 /* Networking/Mesh/MessageQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Mesh/MessageQueue.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000300000005 /* Networking/Mesh/NetworkAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Mesh/NetworkAnalyzer.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000300000006 /* Networking/Mesh/PeerTrustManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Mesh/PeerTrustManager.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000300000007 /* Networking/Routing/RoutingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Routing/RoutingEngine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +134,13 @@
 				A1B2C3D4E5F6000100000001 /* Protocol/ContractV1Models.swift */,
 				A1B2C3D4E5F6000100000002 /* Protocol/ContractV1Validators.swift */,
 				A1B2C3D4E5F6000100000003 /* Security/InstallationIdentityManager.swift */,
+				A1B2C3D4E5F6000300000001 /* Networking/Mesh/MeshEngine.swift */,
+				A1B2C3D4E5F6000300000002 /* Networking/Mesh/DeduplicationManager.swift */,
+				A1B2C3D4E5F6000300000003 /* Networking/Mesh/AcknowledgementManager.swift */,
+				A1B2C3D4E5F6000300000004 /* Networking/Mesh/MessageQueue.swift */,
+				A1B2C3D4E5F6000300000005 /* Networking/Mesh/NetworkAnalyzer.swift */,
+				A1B2C3D4E5F6000300000006 /* Networking/Mesh/PeerTrustManager.swift */,
+				A1B2C3D4E5F6000300000007 /* Networking/Routing/RoutingEngine.swift */,
 				AB50414DD546CCBA7BE40984 /* Resources/Assets.xcassets */,
 				E2DAEB0125AFE787A6B01E78 /* Resources/Info.plist */,
 			);
@@ -235,6 +256,13 @@
 				B1B2C3D4E5F6000100000001 /* Protocol/ContractV1Models.swift in Sources */,
 				B1B2C3D4E5F6000100000002 /* Protocol/ContractV1Validators.swift in Sources */,
 				B1B2C3D4E5F6000100000003 /* Security/InstallationIdentityManager.swift in Sources */,
+				B1B2C3D4E5F6000300000001 /* Networking/Mesh/MeshEngine.swift in Sources */,
+				B1B2C3D4E5F6000300000002 /* Networking/Mesh/DeduplicationManager.swift in Sources */,
+				B1B2C3D4E5F6000300000003 /* Networking/Mesh/AcknowledgementManager.swift in Sources */,
+				B1B2C3D4E5F6000300000004 /* Networking/Mesh/MessageQueue.swift in Sources */,
+				B1B2C3D4E5F6000300000005 /* Networking/Mesh/NetworkAnalyzer.swift in Sources */,
+				B1B2C3D4E5F6000300000006 /* Networking/Mesh/PeerTrustManager.swift in Sources */,
+				B1B2C3D4E5F6000300000007 /* Networking/Routing/RoutingEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
