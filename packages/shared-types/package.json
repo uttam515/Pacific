@@ -1,0 +1,13 @@
+{
+  "name": "@offgrid/shared-types",
+  "version": "0.1.0",
+  "description": "Shared Domain Types & Entities across OFFGRID",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

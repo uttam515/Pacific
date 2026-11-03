@@ -1,0 +1,21 @@
+{
+  "name": "@offgrid/api-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OFFGRID Central API Server & WebSocket Hub (Engineer 1)",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@offgrid/protocol": "workspace:*",
+    "@offgrid/shared-types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

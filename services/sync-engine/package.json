@@ -1,0 +1,20 @@
+{
+  "name": "@offgrid/sync-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OFFGRID Central Synchronization & Conflict Resolution Engine (Engineer 1)",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@offgrid/protocol": "workspace:*",
+    "@offgrid/shared-types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

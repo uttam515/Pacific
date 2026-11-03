@@ -1,0 +1,25 @@
+{
+  "name": "offgrid",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OFFGRID — Software-Defined Decentralized Networking & Offline-First Synchronization System",
+  "scripts": {
+    "build": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run build",
+    "lint": "pnpm -r run lint",
+    "test": "pnpm -r run test",
+    "clean": "pnpm -r run clean"
+  },
+  "packageManager": "pnpm@12.9.1",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "offline-first",
+    "mesh-networking",
+    "decentralized",
+    "sync",
+    "resilient"
+  ],
+  "author": "OFFGRID Team",
+  "license": "MIT"
+}
