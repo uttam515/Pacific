@@ -1,0 +1,1501 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://offgrid.example/contracts/v1/contract.schema.json",
+  "$comment": "Review candidate 1.0.0-rc.2; this identifier is not a hosted service. $defs are the authoritative wire types.",
+  "title": "OFFGRID v1 contract \u2014 review candidate",
+  "$defs": {
+    "UUID": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "Integer": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "Cursor": {
+      "type": "string",
+      "pattern": "^c[0-9]{1,20}$"
+    },
+    "MessagePayload": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "recipientNodeId": {
+          "$ref": "#/$defs/UUID"
+        }
+      },
+      "required": [
+        "text",
+        "recipientNodeId"
+      ],
+      "additionalProperties": false
+    },
+    "SOSPayload": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "category": {
+          "enum": [
+            "ASSISTANCE",
+            "MEDICAL",
+            "SUPPLIES",
+            "OTHER"
+          ]
+        },
+        "location": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "latitude": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "longitude": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          },
+          "required": [
+            "label"
+          ],
+          "additionalProperties": false,
+          "dependentRequired": {
+            "latitude": [
+              "longitude"
+            ],
+            "longitude": [
+              "latitude"
+            ]
+          }
+        }
+      },
+      "required": [
+        "text",
+        "category",
+        "location"
+      ],
+      "additionalProperties": false
+    },
+    "AnnouncementPayload": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "Operation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "operationId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "originNodeId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "entityId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "timestamp": {
+              "$ref": "#/$defs/Integer"
+            },
+            "lamportClock": {
+              "$ref": "#/$defs/Integer"
+            },
+            "entityType": {
+              "const": "MESSAGE"
+            },
+            "action": {
+              "const": "CREATE"
+            },
+            "baseVersion": {
+              "const": 0
+            },
+            "payload": {
+              "$ref": "#/$defs/MessagePayload"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "operationId",
+            "originNodeId",
+            "entityId",
+            "timestamp",
+            "lamportClock",
+            "entityType",
+            "action",
+            "baseVersion",
+            "payload"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "operationId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "originNodeId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "entityId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "timestamp": {
+              "$ref": "#/$defs/Integer"
+            },
+            "lamportClock": {
+              "$ref": "#/$defs/Integer"
+            },
+            "entityType": {
+              "const": "SOS"
+            },
+            "action": {
+              "const": "CREATE"
+            },
+            "baseVersion": {
+              "const": 0
+            },
+            "payload": {
+              "$ref": "#/$defs/SOSPayload"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "operationId",
+            "originNodeId",
+            "entityId",
+            "timestamp",
+            "lamportClock",
+            "entityType",
+            "action",
+            "baseVersion",
+            "payload"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "operationId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "originNodeId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "entityId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "timestamp": {
+              "$ref": "#/$defs/Integer"
+            },
+            "lamportClock": {
+              "$ref": "#/$defs/Integer"
+            },
+            "entityType": {
+              "const": "ANNOUNCEMENT"
+            },
+            "action": {
+              "const": "CREATE"
+            },
+            "baseVersion": {
+              "const": 0
+            },
+            "payload": {
+              "$ref": "#/$defs/AnnouncementPayload"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "operationId",
+            "originNodeId",
+            "entityId",
+            "timestamp",
+            "lamportClock",
+            "entityType",
+            "action",
+            "baseVersion",
+            "payload"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "operationId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "originNodeId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "entityId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "timestamp": {
+              "$ref": "#/$defs/Integer"
+            },
+            "lamportClock": {
+              "$ref": "#/$defs/Integer"
+            },
+            "entityType": {
+              "const": "ANNOUNCEMENT"
+            },
+            "action": {
+              "const": "UPDATE"
+            },
+            "baseVersion": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "payload": {
+              "$ref": "#/$defs/AnnouncementPayload"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "operationId",
+            "originNodeId",
+            "entityId",
+            "timestamp",
+            "lamportClock",
+            "entityType",
+            "action",
+            "baseVersion",
+            "payload"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Acknowledgment": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "ackId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "operationId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "stage": {
+          "enum": [
+            "PEER_STORED",
+            "BACKEND_COMMITTED",
+            "RECIPIENT_ACKNOWLEDGED"
+          ]
+        },
+        "acknowledgingNodeId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "timestamp": {
+          "$ref": "#/$defs/Integer"
+        },
+        "packetId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "entityVersion": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "ackId",
+        "operationId",
+        "stage",
+        "acknowledgingNodeId",
+        "timestamp"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "const": "BACKEND_COMMITTED"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "entityVersion"
+            ],
+            "properties": {
+              "entityVersion": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Envelope": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": 1
+            },
+            "packetId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "sourceNodeId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "destinationNodeId": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/UUID"
+                },
+                {
+                  "const": "*"
+                }
+              ]
+            },
+            "timestamp": {
+              "$ref": "#/$defs/Integer"
+            },
+            "ttl": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8
+            },
+            "hopCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8
+            },
+            "type": {
+              "const": "SYNC_OP"
+            },
+            "payload": {
+              "$ref": "#/$defs/Operation"
+            }
+          },
+          "required": [
+            "version",
+            "packetId",
+            "sourceNodeId",
+            "destinationNodeId",
+            "timestamp",
+            "ttl",
+            "hopCount",
+            "type",
+            "payload"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": 1
+            },
+            "packetId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "sourceNodeId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "destinationNodeId": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/UUID"
+                },
+                {
+                  "const": "*"
+                }
+              ]
+            },
+            "timestamp": {
+              "$ref": "#/$defs/Integer"
+            },
+            "ttl": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8
+            },
+            "hopCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8
+            },
+            "type": {
+              "const": "ACK"
+            },
+            "payload": {
+              "$ref": "#/$defs/Acknowledgment"
+            }
+          },
+          "required": [
+            "version",
+            "packetId",
+            "sourceNodeId",
+            "destinationNodeId",
+            "timestamp",
+            "ttl",
+            "hopCount",
+            "type",
+            "payload"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "enum": [
+            "VALIDATION_ERROR",
+            "UNAUTHORIZED",
+            "FORBIDDEN",
+            "ID_REUSE",
+            "STALE_RESOLUTION",
+            "CURSOR_EXPIRED",
+            "UNSUPPORTED_VERSION",
+            "TOO_LARGE",
+            "TEMPORARY_FAILURE",
+            "ENTITY_NOT_FOUND"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "additionalProperties": false
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "error": {
+          "$ref": "#/$defs/Error"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "PushRequest": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "nodeId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Operation"
+          },
+          "minItems": 1,
+          "maxItems": 100
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "nodeId",
+        "operations"
+      ],
+      "additionalProperties": false
+    },
+    "PushResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "operationId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "outcome": {
+              "const": "COMMITTED"
+            },
+            "duplicate": {
+              "type": "boolean"
+            },
+            "entityVersion": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "ack": {
+              "$ref": "#/$defs/Acknowledgment"
+            }
+          },
+          "required": [
+            "operationId",
+            "outcome",
+            "duplicate",
+            "entityVersion",
+            "ack"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operationId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "outcome": {
+              "const": "CONFLICT"
+            },
+            "duplicate": {
+              "type": "boolean"
+            },
+            "conflictId": {
+              "$ref": "#/$defs/UUID"
+            }
+          },
+          "required": [
+            "operationId",
+            "outcome",
+            "duplicate",
+            "conflictId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operationId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "outcome": {
+              "const": "REJECTED"
+            },
+            "error": {
+              "$ref": "#/$defs/Error"
+            }
+          },
+          "required": [
+            "operationId",
+            "outcome",
+            "error"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PushResponse": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "requestId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PushResult"
+          },
+          "maxItems": 100
+        },
+        "serverLamportClock": {
+          "$ref": "#/$defs/Integer"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "requestId",
+        "results",
+        "serverLamportClock"
+      ],
+      "additionalProperties": false
+    },
+    "Change": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "sequence": {
+              "$ref": "#/$defs/Cursor"
+            },
+            "kind": {
+              "const": "COMMITTED_OPERATION"
+            },
+            "operation": {
+              "$ref": "#/$defs/Operation"
+            },
+            "entityVersion": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "committedAt": {
+              "$ref": "#/$defs/Integer"
+            }
+          },
+          "required": [
+            "sequence",
+            "kind",
+            "operation",
+            "entityVersion",
+            "committedAt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sequence": {
+              "$ref": "#/$defs/Cursor"
+            },
+            "kind": {
+              "const": "CONFLICT_CHANGED"
+            },
+            "conflictId": {
+              "$ref": "#/$defs/UUID"
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "timestamp": {
+              "$ref": "#/$defs/Integer"
+            }
+          },
+          "required": [
+            "sequence",
+            "kind",
+            "conflictId",
+            "revision",
+            "timestamp"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sequence": {
+              "$ref": "#/$defs/Cursor"
+            },
+            "kind": {
+              "const": "ACKNOWLEDGMENT"
+            },
+            "ack": {
+              "$ref": "#/$defs/Acknowledgment"
+            }
+          },
+          "required": [
+            "sequence",
+            "kind",
+            "ack"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PullResponse": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Change"
+          },
+          "maxItems": 100
+        },
+        "nextCursor": {
+          "$ref": "#/$defs/Cursor"
+        },
+        "hasMore": {
+          "type": "boolean"
+        },
+        "serverLamportClock": {
+          "$ref": "#/$defs/Integer"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "changes",
+        "nextCursor",
+        "hasMore",
+        "serverLamportClock"
+      ],
+      "additionalProperties": false
+    },
+    "Candidate": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "$ref": "#/$defs/Operation"
+        }
+      },
+      "required": [
+        "operation"
+      ],
+      "additionalProperties": false
+    },
+    "Conflict": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "conflictId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "entityId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "baseVersion": {
+          "$ref": "#/$defs/Integer"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "currentEntityVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "OPEN",
+            "RESOLVED"
+          ]
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Candidate"
+          },
+          "minItems": 2,
+          "maxItems": 100
+        },
+        "resolutionOperationId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "selectedOperationId": {
+          "$ref": "#/$defs/UUID"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "conflictId",
+        "entityId",
+        "baseVersion",
+        "revision",
+        "currentEntityVersion",
+        "status",
+        "candidates"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "RESOLVED"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "resolutionOperationId",
+              "selectedOperationId"
+            ],
+            "properties": {
+              "resolutionOperationId": {
+                "$ref": "#/$defs/UUID"
+              },
+              "selectedOperationId": {
+                "$ref": "#/$defs/UUID"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ConflictList": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Conflict"
+          },
+          "maxItems": 100
+        },
+        "nextCursor": {
+          "$ref": "#/$defs/Cursor"
+        },
+        "hasMore": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "conflicts",
+        "nextCursor",
+        "hasMore"
+      ],
+      "additionalProperties": false
+    },
+    "ResolveRequest": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "operationId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "resolverNodeId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "selectedOperationId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "expectedConflictRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "expectedEntityVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timestamp": {
+          "$ref": "#/$defs/Integer"
+        },
+        "lamportClock": {
+          "$ref": "#/$defs/Integer"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operationId",
+        "resolverNodeId",
+        "selectedOperationId",
+        "expectedConflictRevision",
+        "expectedEntityVersion",
+        "timestamp",
+        "lamportClock"
+      ],
+      "additionalProperties": false
+    },
+    "ResolveResponse": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "resolutionOperationId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "duplicate": {
+          "type": "boolean"
+        },
+        "conflict": {
+          "$ref": "#/$defs/Conflict"
+        },
+        "ack": {
+          "$ref": "#/$defs/Acknowledgment"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "resolutionOperationId",
+        "duplicate",
+        "conflict",
+        "ack"
+      ],
+      "additionalProperties": false
+    },
+    "Notification": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "type": {
+          "const": "SYNC_NOTIFICATION"
+        },
+        "eventId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "timestamp": {
+          "$ref": "#/$defs/Integer"
+        },
+        "latestCursor": {
+          "$ref": "#/$defs/Cursor"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "type",
+        "eventId",
+        "timestamp",
+        "latestCursor"
+      ],
+      "additionalProperties": false
+    },
+    "ReceiptRequest": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "nodeId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "ack": {
+          "$ref": "#/$defs/Acknowledgment"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "nodeId",
+        "ack"
+      ],
+      "additionalProperties": false
+    },
+    "ReceiptResponse": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "acceptedAckId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "duplicate": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "acceptedAckId",
+        "duplicate"
+      ],
+      "additionalProperties": false
+    },
+    "DeliveryEvidence": {
+      "type": "object",
+      "properties": {
+        "localStoredAt": {
+          "$ref": "#/$defs/Integer"
+        },
+        "queuedAt": {
+          "$ref": "#/$defs/Integer"
+        },
+        "peerReceipts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Acknowledgment"
+          },
+          "maxItems": 100
+        },
+        "relayAttempts": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "properties": {
+              "packetId": {
+                "$ref": "#/$defs/UUID"
+              },
+              "forwarderNodeId": {
+                "$ref": "#/$defs/UUID"
+              },
+              "nextHopNodeId": {
+                "$ref": "#/$defs/UUID"
+              },
+              "timestamp": {
+                "$ref": "#/$defs/Integer"
+              },
+              "result": {
+                "enum": [
+                  "SENT",
+                  "FAILED"
+                ]
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "packetId",
+              "forwarderNodeId",
+              "nextHopNodeId",
+              "timestamp",
+              "result",
+              "retryable"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "backendReceipt": {
+          "$ref": "#/$defs/Acknowledgment"
+        },
+        "recipientReceipts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Acknowledgment"
+          },
+          "maxItems": 100
+        },
+        "lastAttemptError": {
+          "$ref": "#/$defs/Error"
+        }
+      },
+      "required": [
+        "peerReceipts",
+        "relayAttempts",
+        "recipientReceipts"
+      ],
+      "additionalProperties": false
+    },
+    "DashboardNode": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "platform": {
+          "enum": [
+            "iOS",
+            "Android",
+            "Windows",
+            "macOS",
+            "Linux",
+            "Web",
+            "Server"
+          ]
+        },
+        "role": {
+          "enum": [
+            "client",
+            "relay",
+            "gateway"
+          ]
+        },
+        "status": {
+          "enum": [
+            "active",
+            "unreachable"
+          ]
+        },
+        "lastSeen": {
+          "$ref": "#/$defs/Integer"
+        },
+        "battery": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "platform",
+        "role",
+        "status",
+        "lastSeen"
+      ],
+      "additionalProperties": false
+    },
+    "DashboardOperation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "origin": {
+          "$ref": "#/$defs/UUID"
+        },
+        "kind": {
+          "enum": [
+            "Message",
+            "SOS",
+            "Announcement"
+          ]
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "relayed",
+            "synced",
+            "conflict"
+          ]
+        },
+        "createdAt": {
+          "$ref": "#/$defs/Integer"
+        },
+        "hops": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "conflictId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "delivery": {
+          "$ref": "#/$defs/DeliveryEvidence"
+        }
+      },
+      "required": [
+        "id",
+        "origin",
+        "kind",
+        "status",
+        "createdAt",
+        "hops",
+        "delivery"
+      ],
+      "additionalProperties": false
+    },
+    "DashboardAlert": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "location": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "nodeId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "status": {
+          "enum": [
+            "new",
+            "acknowledged",
+            "resolved"
+          ]
+        },
+        "createdAt": {
+          "$ref": "#/$defs/Integer"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "category",
+        "location",
+        "nodeId",
+        "status",
+        "createdAt"
+      ],
+      "additionalProperties": false
+    },
+    "DashboardConflict": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "entity": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "baseVersion": {
+          "$ref": "#/$defs/Integer"
+        },
+        "left": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "right": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "leftNode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "rightNode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "resolved": {
+          "enum": [
+            "left",
+            "right"
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "currentEntityVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "candidateOperationIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UUID"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "required": [
+        "id",
+        "entity",
+        "baseVersion",
+        "left",
+        "right",
+        "leftNode",
+        "rightNode",
+        "revision",
+        "currentEntityVersion",
+        "candidateOperationIds"
+      ],
+      "additionalProperties": false
+    },
+    "DashboardGateway": {
+      "type": "object",
+      "properties": {
+        "nodeId": {
+          "$ref": "#/$defs/UUID"
+        },
+        "reachable": {
+          "type": "boolean"
+        },
+        "selected": {
+          "type": "boolean"
+        },
+        "latency": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "nodeId",
+        "reachable",
+        "selected",
+        "latency"
+      ],
+      "additionalProperties": false
+    },
+    "DashboardEvent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "time": {
+          "$ref": "#/$defs/Integer"
+        },
+        "kind": {
+          "enum": [
+            "info",
+            "success",
+            "warning"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "detail",
+        "time",
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "DashboardSnapshot": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "observedAt": {
+          "$ref": "#/$defs/Integer"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DashboardNode"
+          },
+          "maxItems": 1000
+        },
+        "links": {
+          "type": "array",
+          "maxItems": 5000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "$ref": "#/$defs/UUID"
+              },
+              "to": {
+                "$ref": "#/$defs/UUID"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DashboardOperation"
+          },
+          "maxItems": 100
+        },
+        "alerts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DashboardAlert"
+          },
+          "maxItems": 100
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DashboardConflict"
+          },
+          "maxItems": 100
+        },
+        "gateways": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DashboardGateway"
+          },
+          "maxItems": 1000
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DashboardEvent"
+          },
+          "maxItems": 100
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "observedAt",
+        "nodes",
+        "links",
+        "operations",
+        "alerts",
+        "conflicts",
+        "gateways",
+        "events"
+      ],
+      "additionalProperties": false
+    },
+    "Health": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "status": {
+          "const": "ok"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "status"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

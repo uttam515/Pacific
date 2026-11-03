@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "error": {
+    "code": "STALE_RESOLUTION",
+    "message": "Reload conflict; current entity version changed.",
+    "retryable": false
+  }
+}

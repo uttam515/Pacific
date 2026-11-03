@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "resolutionOperationId": "00000000-0000-4000-8000-000000000024",
+  "duplicate": false,
+  "conflict": {
+    "schemaVersion": 1,
+    "conflictId": "00000000-0000-4000-8000-000000000060",
+    "entityId": "00000000-0000-4000-8000-000000000011",
+    "baseVersion": 1,
+    "revision": 2,
+    "currentEntityVersion": 3,
+    "status": "RESOLVED",
+    "candidates": [
+      {
+        "operation": {
+          "schemaVersion": 1,
+          "operationId": "00000000-0000-4000-8000-000000000022",
+          "originNodeId": "00000000-0000-4000-8000-000000000001",
+          "entityId": "00000000-0000-4000-8000-000000000011",
+          "timestamp": 1793721600000,
+          "lamportClock": 2,
+          "entityType": "ANNOUNCEMENT",
+          "action": "UPDATE",
+          "baseVersion": 1,
+          "payload": {
+            "text": "Library shelter open until 18:00."
+          }
+        }
+      },
+      {
+        "operation": {
+          "schemaVersion": 1,
+          "operationId": "00000000-0000-4000-8000-000000000023",
+          "originNodeId": "00000000-0000-4000-8000-000000000002",
+          "entityId": "00000000-0000-4000-8000-000000000011",
+          "timestamp": 1793721600000,
+          "lamportClock": 2,
+          "entityType": "ANNOUNCEMENT",
+          "action": "UPDATE",
+          "baseVersion": 1,
+          "payload": {
+            "text": "Shelter moved to the sports hall."
+          }
+        }
+      }
+    ],
+    "resolutionOperationId": "00000000-0000-4000-8000-000000000024",
+    "selectedOperationId": "00000000-0000-4000-8000-000000000023"
+  },
+  "ack": {
+    "schemaVersion": 1,
+    "ackId": "00000000-0000-4000-8000-000000000043",
+    "operationId": "00000000-0000-4000-8000-000000000024",
+    "stage": "BACKEND_COMMITTED",
+    "acknowledgingNodeId": "00000000-0000-4000-8000-000000000003",
+    "timestamp": 1793721602000,
+    "entityVersion": 3
+  }
+}

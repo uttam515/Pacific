@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "observedAt": 1793721603000,
+  "nodes": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "iPhone A",
+      "platform": "iOS",
+      "role": "client",
+      "status": "active",
+      "lastSeen": 1793721602000,
+      "battery": 70
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "name": "Backend gateway",
+      "platform": "Server",
+      "role": "gateway",
+      "status": "active",
+      "lastSeen": 1793721603000
+    }
+  ],
+  "links": [],
+  "operations": [
+    {
+      "id": "00000000-0000-4000-8000-000000000020",
+      "origin": "00000000-0000-4000-8000-000000000001",
+      "kind": "Message",
+      "status": "synced",
+      "createdAt": 1793721600000,
+      "hops": 0,
+      "delivery": {
+        "localStoredAt": 1793721600000,
+        "queuedAt": 1793721600000,
+        "peerReceipts": [
+          {
+            "schemaVersion": 1,
+            "ackId": "00000000-0000-4000-8000-000000000041",
+            "operationId": "00000000-0000-4000-8000-000000000020",
+            "stage": "PEER_STORED",
+            "acknowledgingNodeId": "00000000-0000-4000-8000-000000000002",
+            "timestamp": 1793721602000,
+            "packetId": "00000000-0000-4000-8000-000000000030"
+          }
+        ],
+        "relayAttempts": [],
+        "backendReceipt": {
+          "schemaVersion": 1,
+          "ackId": "00000000-0000-4000-8000-000000000040",
+          "operationId": "00000000-0000-4000-8000-000000000020",
+          "stage": "BACKEND_COMMITTED",
+          "acknowledgingNodeId": "00000000-0000-4000-8000-000000000003",
+          "timestamp": 1793721602000,
+          "entityVersion": 1
+        },
+        "recipientReceipts": []
+      }
+    }
+  ],
+  "alerts": [],
+  "conflicts": [
+    {
+      "id": "00000000-0000-4000-8000-000000000060",
+      "entity": "Campus shelter",
+      "baseVersion": 1,
+      "left": "Library shelter open until 18:00.",
+      "right": "Shelter moved to the sports hall.",
+      "leftNode": "iPhone A",
+      "rightNode": "iPhone B",
+      "revision": 1,
+      "currentEntityVersion": 2,
+      "candidateOperationIds": [
+        "00000000-0000-4000-8000-000000000022",
+        "00000000-0000-4000-8000-000000000023"
+      ]
+    }
+  ],
+  "gateways": [
+    {
+      "nodeId": "00000000-0000-4000-8000-000000000003",
+      "reachable": true,
+      "selected": true,
+      "latency": 20
+    }
+  ],
+  "events": [
+    {
+      "id": "00000000-0000-4000-8000-000000000071",
+      "title": "Operation committed",
+      "detail": "iPhone A operation stored once",
+      "time": 1793721602000,
+      "kind": "success"
+    }
+  ]
+}
