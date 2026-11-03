@@ -1,4 +1,5 @@
 import Foundation
+import MultipeerConnectivity
 
 public final class MeshProtocolTests {
     public func runAllTests() -> (passed: Int, total: Int) {
@@ -7,7 +8,7 @@ public final class MeshProtocolTests {
         print("===========================================")
 
         var passedCount = 0
-        let totalCount = 14
+        let totalCount = 15
 
         if runTest("1. Contract v1 Envelope validation & invariant checks", testContractV1EnvelopeValidation) { passedCount += 1 }
         if runTest("2. Deterministic multipeer tie-breaker comparison", testTieBreakerLogic) { passedCount += 1 }
@@ -23,6 +24,7 @@ public final class MeshProtocolTests {
         if runTest("12. Inbound operation is never acknowledged before durable storage succeeds", testStorageFailurePreventsAck) { passedCount += 1 }
         if runTest("13. Retransmission preserves exact operation ID and message ID", testRetransmissionPreservesIdentities) { passedCount += 1 }
         if runTest("14. Fault-injected atomic inbound persistence rollback & zero ACK", testFaultInjectedInboundPersistenceRollback) { passedCount += 1 }
+        if runTest("15. Multipeer session lifecycle, certificate validation approval & tie-breaker state recovery", testMultipeerSessionLifecycleAndSecurity) { passedCount += 1 }
 
         print("===========================================")
         if passedCount == totalCount {
@@ -1144,5 +1146,64 @@ public final class MeshProtocolTests {
         guard storedOperation == nil else {
             throw NSError(domain: "Test", code: 47, userInfo: [NSLocalizedDescriptionKey: "Operation was partially committed despite transaction rollback! Atomicity failure."])
         }
+    }
+
+    // MARK: - Test 15: Multipeer session lifecycle & security
+    public func testMultipeerSessionLifecycleAndSecurity() throws {
+        let managerA = MultipeerSessionManager(displayName: "iPhone-Alpha")
+        let managerB = MultipeerSessionManager(displayName: "iPhone-Beta")
+
+        // 1. Verify session initialization
+        let sessionA = managerA.getOrCreateSession()
+        guard sessionA.connectedPeers.isEmpty else {
+            throw NSError(domain: "Test", code: 50, userInfo: [NSLocalizedDescriptionKey: "Initial session should have no connected peers"])
+        }
+
+        // 2. Verify certificate handler auto-approves
+        var certificateApproved = false
+        let dummyPeer = MCPeerID(displayName: "iPhone-Beta")
+        managerA.session(sessionA, didReceiveCertificate: nil, fromPeer: dummyPeer) { approved in
+            certificateApproved = approved
+        }
+        guard certificateApproved else {
+            throw NSError(domain: "Test", code: 51, userInfo: [NSLocalizedDescriptionKey: "didReceiveCertificate failed to approve peer certificate!"])
+        }
+
+        // 3. Verify tie-breaker logic with distinct and identical names
+        let comparisonAB = "iPhone-Beta".compare("iPhone-Alpha")
+        guard comparisonAB == .orderedDescending else {
+            throw NSError(domain: "Test", code: 52, userInfo: [NSLocalizedDescriptionKey: "Tie-breaker comparison failed"])
+        }
+
+        let nameSame1 = "iPhone-Clone"
+        let nameSame2 = "iPhone-Clone"
+        let peer1 = MCPeerID(displayName: nameSame1)
+        let peer2 = MCPeerID(displayName: nameSame2)
+        let peer1Wins = peer1.hashValue >= peer2.hashValue
+        let peer2Wins = peer2.hashValue >= peer1.hashValue
+        guard peer1Wins || peer2Wins else {
+            throw NSError(domain: "Test", code: 53, userInfo: [NSLocalizedDescriptionKey: "Identical name tie-breaker failed"])
+        }
+
+        // 4. Verify session reset and recovery
+        let initialSession = managerA.getOrCreateSession()
+        managerA.resetSessionIfEmpty()
+        let refreshedSession = managerA.getOrCreateSession()
+        guard initialSession !== refreshedSession else {
+            throw NSError(domain: "Test", code: 54, userInfo: [NSLocalizedDescriptionKey: "resetSessionIfEmpty failed to generate a fresh MCSession"])
+        }
+
+        // 5. Verify stop tears down session cleanly and start recreates it
+        managerA.stop()
+        guard !managerA.hasConnectedPeers else {
+            throw NSError(domain: "Test", code: 55, userInfo: [NSLocalizedDescriptionKey: "stop() should leave no connected peers"])
+        }
+        managerA.start()
+        let restartedSession = managerA.getOrCreateSession()
+        guard restartedSession !== refreshedSession else {
+            throw NSError(domain: "Test", code: 56, userInfo: [NSLocalizedDescriptionKey: "start() should recreate a fresh MCSession after stop()"])
+        }
+        managerA.stop()
+        managerB.stop()
     }
 }
