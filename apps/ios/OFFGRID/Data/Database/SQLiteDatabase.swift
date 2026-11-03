@@ -153,6 +153,8 @@ public final class SQLiteDatabase: @unchecked Sendable {
 
     // Fault injection hook for testing migration atomicity
     public static var migrationV2FaultInjection: (() throws -> Void)?
+    // Fault injection hook for testing inbound message + operation atomicity
+    public static var inboundPersistenceFaultInjection: (() throws -> Void)?
 
     public struct OperationCollisionDiagnostic: CustomStringConvertible, Sendable {
         public let operationId: String
@@ -331,10 +333,14 @@ public final class SQLiteDatabase: @unchecked Sendable {
 
     // MARK: - Atomic Message + Operation Persistence
 
-    public func saveMessageWithOperation(message: OFFGRIDMessage, operation: OFFGRIDOperation) throws {
-        try performTransaction {
+    @discardableResult
+    public func saveMessageWithOperation(message: OFFGRIDMessage, operation: OFFGRIDOperation) throws -> OperationInsertionResult {
+        return try performTransaction {
             insertMessageInternal(message)
-            try insertOperationInternal(operation)
+            if let fault = SQLiteDatabase.inboundPersistenceFaultInjection {
+                try fault()
+            }
+            return try insertOperationInternal(operation)
         }
     }
 

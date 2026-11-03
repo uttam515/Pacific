@@ -81,11 +81,11 @@ public final class SOSViewModel: ObservableObject {
         case .queued:
             self.broadcastSuccessMessage = "No peers connected. Beacon queued in SQLite — will transmit immediately upon connection."
         case .relayed:
-            self.broadcastSuccessMessage = "Relayed onto local mesh radio hop. Waiting for peer delivery acknowledgment..."
+            self.broadcastSuccessMessage = "Peer Stored: Durably stored on mesh peer outbox. Relayed on mesh radio."
         case .delivered:
-            self.broadcastSuccessMessage = "Delivery Confirmed: Acknowledged by nearby mesh peer!"
+            self.broadcastSuccessMessage = "Recipient Acknowledged: Confirmed received and acknowledged by end recipient."
         case .synced:
-            self.broadcastSuccessMessage = "Synchronized with emergency gateway."
+            self.broadcastSuccessMessage = "Backend Committed: Synchronized and committed by central gateway."
         case .failed:
             self.broadcastSuccessMessage = "Transmission failed. Tap retry to re-broadcast."
         default:

@@ -7,21 +7,22 @@ public final class MeshProtocolTests {
         print("===========================================")
 
         var passedCount = 0
-        let totalCount = 13
+        let totalCount = 14
 
         if runTest("1. Contract v1 Envelope validation & invariant checks", testContractV1EnvelopeValidation) { passedCount += 1 }
         if runTest("2. Deterministic multipeer tie-breaker comparison", testTieBreakerLogic) { passedCount += 1 }
-        if runTest("3. End-to-end Device-to-Device SYNC_OP message & PEER_STORED ACK simulation", testDeviceToDeviceMessageAndAckFlow) { passedCount += 1 }
+        if runTest("3. End-to-end Device-to-Device SYNC_OP message & distinct ACK stage simulation", testDeviceToDeviceMessageAndAckFlow) { passedCount += 1 }
         if runTest("4. Inbound duplicate message suppression & idempotent ACK", testDuplicateSuppressionAndAck) { passedCount += 1 }
         if runTest("5. Offline queued message flushing on peer connect", testOfflineQueueFlushing) { passedCount += 1 }
         if runTest("6. Emergency SOS atomic creation and persistence with Contract v1 payload", testSOSCreationAndPersistence) { passedCount += 1 }
         if runTest("7. End-to-end SOS transmission, entity preservation, and ACK delivery", testSOSTransmissionAndAckFlow) { passedCount += 1 }
         if runTest("8. SOS queue flushing on peer link restoration", testSOSQueueFlushing) { passedCount += 1 }
-        if runTest("9. Inbound duplicate SOS suppression & idempotency", testDuplicateSOSSuppression) { passedCount += 1 }
+        if runTest("9. Independent SOS duplicate & new-event tests (Part A & Part B)", testDuplicateSOSSuppression) { passedCount += 1 }
         if runTest("10. Active incoming vs outgoing SOS feed separation", testSOSFeedSeparation) { passedCount += 1 }
         if runTest("11. Intermediate peers strictly issue PEER_STORED and never RECIPIENT_ACKNOWLEDGED", testIntermediatePeerAckRestrictions) { passedCount += 1 }
         if runTest("12. Inbound operation is never acknowledged before durable storage succeeds", testStorageFailurePreventsAck) { passedCount += 1 }
         if runTest("13. Retransmission preserves exact operation ID and message ID", testRetransmissionPreservesIdentities) { passedCount += 1 }
+        if runTest("14. Fault-injected atomic inbound persistence rollback & zero ACK", testFaultInjectedInboundPersistenceRollback) { passedCount += 1 }
 
         print("===========================================")
         if passedCount == totalCount {
@@ -325,7 +326,7 @@ public final class MeshProtocolTests {
         )
         let ackData = try JSONEncoder().encode(ackEnvB)
 
-        // Step 7: iPhone A receives ACK, validates, updates status to .delivered
+        // Step 7: iPhone A receives PEER_STORED ACK: transitions message to .relayed (peer-stored/relayed)
         let decodedAckEnv = try JSONDecoder().decode(ContractV1.Envelope.self, from: ackData)
         try ContractV1Validator.validateEnvelope(decodedAckEnv)
 
@@ -336,14 +337,41 @@ public final class MeshProtocolTests {
             throw NSError(domain: "Test", code: 11, userInfo: [NSLocalizedDescriptionKey: "Expected PEER_STORED stage"])
         }
 
-        // iPhone A updates message status to .delivered ONLY upon verified ACK
+        // PEER_STORED strictly transitions to .relayed (peer-stored/relayed), NOT .delivered!
         let targetOp = opRepoA.getOperation(byOperationId: ack.operationId)!
-        repoA.updateStatus(id: targetOp.entityId, status: .delivered)
+        repoA.updateStatus(id: targetOp.entityId, status: .relayed)
         opRepoA.markStatus(operationId: ack.operationId, status: .peerRelayed)
 
-        let finalMsgA = repoA.getMessage(id: messageId)!
-        guard finalMsgA.status == .delivered else {
-            throw NSError(domain: "Test", code: 12, userInfo: [NSLocalizedDescriptionKey: "Message A did not transition to .delivered after ACK"])
+        let msgAfterPeerStored = repoA.getMessage(id: messageId)!
+        guard msgAfterPeerStored.status == .relayed else {
+            throw NSError(domain: "Test", code: 12, userInfo: [NSLocalizedDescriptionKey: "Message A should be .relayed on PEER_STORED, not .delivered!"])
+        }
+
+        // Step 8: Only explicit RECIPIENT_ACKNOWLEDGED transitions message to .delivered
+        let recipientAckPayload = ContractV1.Acknowledgment(
+            schemaVersion: 1,
+            ackId: UUID().uuidString.lowercased(),
+            operationId: receivedOp.operationId,
+            stage: .recipientAcknowledged,
+            acknowledgingNodeId: nodeB,
+            timestamp: Int64(Date().timeIntervalSince1970 * 1000),
+            packetId: decodedEnvB.packetId
+        )
+        guard recipientAckPayload.stage == .recipientAcknowledged else {
+            throw NSError(domain: "Test", code: 13, userInfo: [NSLocalizedDescriptionKey: "Expected RECIPIENT_ACKNOWLEDGED stage"])
+        }
+        repoA.updateStatus(id: targetOp.entityId, status: .delivered)
+        let msgAfterRecipientAck = repoA.getMessage(id: messageId)!
+        guard msgAfterRecipientAck.status == .delivered else {
+            throw NSError(domain: "Test", code: 14, userInfo: [NSLocalizedDescriptionKey: "Message A did not transition to .delivered after RECIPIENT_ACKNOWLEDGED"])
+        }
+
+        // Step 9: Only BACKEND_COMMITTED transitions message to .synced
+        repoA.updateStatus(id: targetOp.entityId, status: .synced)
+        opRepoA.markStatus(operationId: ack.operationId, status: .gatewaySynced)
+        let msgAfterBackendAck = repoA.getMessage(id: messageId)!
+        guard msgAfterBackendAck.status == .synced else {
+            throw NSError(domain: "Test", code: 15, userInfo: [NSLocalizedDescriptionKey: "Message A did not transition to .synced after BACKEND_COMMITTED"])
         }
     }
 
@@ -674,7 +702,7 @@ public final class MeshProtocolTests {
         )
         let ackData = try JSONEncoder().encode(ackEnv)
 
-        // Sender receives ACK and marks delivered
+        // Sender receives PEER_STORED ACK and marks .relayed (peer-stored/relayed)
         let receivedAckEnv = try JSONDecoder().decode(ContractV1.Envelope.self, from: ackData)
         guard case .ack(let ack) = receivedAckEnv.payload else {
             throw NSError(domain: "Test", code: 24, userInfo: [NSLocalizedDescriptionKey: "Expected ACK envelope"])
@@ -684,11 +712,18 @@ public final class MeshProtocolTests {
         }
 
         let opFound = opRepoA.getOperation(byOperationId: ack.operationId)!
-        repoA.updateStatus(id: opFound.entityId, status: .delivered)
+        repoA.updateStatus(id: opFound.entityId, status: .relayed)
 
         let finalA = repoA.getMessage(id: sosId)
-        guard let finalA = finalA, finalA.status == .delivered else {
-            throw NSError(domain: "Test", code: 26, userInfo: [NSLocalizedDescriptionKey: "Sender SOS was not updated to .delivered after ACK"])
+        guard let finalA = finalA, finalA.status == .relayed else {
+            throw NSError(domain: "Test", code: 26, userInfo: [NSLocalizedDescriptionKey: "Sender SOS was not updated to .relayed after PEER_STORED ACK"])
+        }
+
+        // When explicit RECIPIENT_ACKNOWLEDGED is received, status transitions to .delivered
+        repoA.updateStatus(id: opFound.entityId, status: .delivered)
+        let deliveredSOS = repoA.getMessage(id: sosId)
+        guard let deliveredSOS = deliveredSOS, deliveredSOS.status == .delivered else {
+            throw NSError(domain: "Test", code: 27, userInfo: [NSLocalizedDescriptionKey: "Sender SOS was not updated to .delivered after RECIPIENT_ACKNOWLEDGED"])
         }
     }
 
@@ -733,29 +768,103 @@ public final class MeshProtocolTests {
         }
     }
 
-    // MARK: - Test 9: Duplicate SOS suppression
+    // MARK: - Test 9: Independent SOS duplicate & new-event tests (Part A & Part B)
     public func testDuplicateSOSSuppression() throws {
         let dbPath = "/tmp/offgrid_sos_dup_\(UUID().uuidString.lowercased()).sqlite"
         defer { try? FileManager.default.removeItem(atPath: dbPath) }
 
         let db = SQLiteDatabase(inMemory: false, customPath: dbPath)
         let repo = MessageRepository(database: db)
+        let opRepo = OperationQueueRepository(database: db)
 
-        let sosId = UUID().uuidString.lowercased()
         let peerId = UUID().uuidString.lowercased()
-        let original = OFFGRIDMessage(id: sosId, senderId: peerId, senderName: "Peer", content: "Original SOS", type: .sos, status: .delivered)
-        repo.saveMessage(original)
+        let sosText = "Immediate extraction required: medical evacuation at ridge"
+        let sosCategory = ContractV1.SOSCategory.medical
 
-        let duplicate = OFFGRIDMessage(id: sosId, senderId: peerId, senderName: "Peer", content: "Tampered Content", type: .sos, status: .delivered)
+        let sosPayload = ContractV1.SOSPayload(
+            text: sosText,
+            category: sosCategory,
+            location: ContractV1.SOSLocation(label: "Ridge Marker 4", latitude: 37.77, longitude: -122.41)
+        )
+        let payloadData = try JSONEncoder().encode(sosPayload)
+        let payloadJson = String(data: payloadData, encoding: .utf8)!
 
-        let exists = repo.getMessage(id: duplicate.id) != nil
-        guard exists else {
-            throw NSError(domain: "Test", code: 29, userInfo: [NSLocalizedDescriptionKey: "Duplicate SOS check failed"])
+        // --- PART A: Initial SOS and Retransmission of exact same operationId & entityId ---
+        let sosIdA = UUID().uuidString.lowercased()
+        let opIdA = UUID().uuidString.lowercased()
+
+        let originalMsgA = OFFGRIDMessage(
+            id: sosIdA,
+            senderId: peerId,
+            senderName: "Peer",
+            content: sosText,
+            type: .sos,
+            status: .relayed
+        )
+        let originalOpA = OFFGRIDOperation(
+            id: opIdA,
+            entityType: .sos,
+            entityId: sosIdA,
+            action: .create,
+            originNodeId: peerId,
+            payloadJson: payloadJson,
+            syncStatus: .peerRelayed
+        )
+
+        // 1. First arrival: persisted atomically as .inserted
+        let firstRes = try repo.saveMessageWithOperation(message: originalMsgA, operation: originalOpA)
+        guard firstRes == .inserted else {
+            throw NSError(domain: "Test", code: 29, userInfo: [NSLocalizedDescriptionKey: "First SOS insert should be .inserted"])
         }
 
-        let retrieved = repo.getMessage(id: sosId)!
-        guard retrieved.content == "Original SOS" else {
-            throw NSError(domain: "Test", code: 30, userInfo: [NSLocalizedDescriptionKey: "Original SOS was overwritten by duplicate"])
+        // 2. Retransmit exact same SOS (same operationId and entityId): suppressed and idempotent
+        let retransmitMsgA = originalMsgA
+        let retransmitOpA = originalOpA
+        let dupRes = try repo.saveMessageWithOperation(message: retransmitMsgA, operation: retransmitOpA)
+        guard dupRes == .duplicateIdentical else {
+            throw NSError(domain: "Test", code: 30, userInfo: [NSLocalizedDescriptionKey: "Retransmitted SOS should be .duplicateIdentical"])
+        }
+
+        // Total messages in DB should still be 1 (no duplicate insertion)
+        let messagesAfterDup = repo.getMessages().filter { $0.type == .sos }
+        guard messagesAfterDup.count == 1 else {
+            throw NSError(domain: "Test", code: 31, userInfo: [NSLocalizedDescriptionKey: "Retransmission should NOT duplicate records in SQLite"])
+        }
+
+        // --- PART B: New SOS with identical text and category, but NEW operationId & entityId ---
+        let sosIdB = UUID().uuidString.lowercased()
+        let opIdB = UUID().uuidString.lowercased()
+
+        let newMsgB = OFFGRIDMessage(
+            id: sosIdB,
+            senderId: peerId,
+            senderName: "Peer",
+            content: sosText, // IDENTICAL content
+            type: .sos,
+            status: .relayed
+        )
+        let newOpB = OFFGRIDOperation(
+            id: opIdB, // DISTINCT operationId
+            entityType: .sos,
+            entityId: sosIdB, // DISTINCT entityId
+            action: .create,
+            originNodeId: peerId,
+            payloadJson: payloadJson, // IDENTICAL payload
+            syncStatus: .peerRelayed
+        )
+
+        let newEventRes = try repo.saveMessageWithOperation(message: newMsgB, operation: newOpB)
+        guard newEventRes == .inserted else {
+            throw NSError(domain: "Test", code: 32, userInfo: [NSLocalizedDescriptionKey: "New SOS with distinct operationId MUST be accepted as .inserted, not suppressed!"])
+        }
+
+        // Both distinct SOS events must now coexist in the database!
+        let allSOSEvents = repo.getMessages().filter { $0.type == .sos }
+        guard allSOSEvents.count == 2 else {
+            throw NSError(domain: "Test", code: 33, userInfo: [NSLocalizedDescriptionKey: "Expected 2 distinct SOS events in SQLite, but found \(allSOSEvents.count)"])
+        }
+        guard opRepo.getOperation(byOperationId: opIdA) != nil && opRepo.getOperation(byOperationId: opIdB) != nil else {
+            throw NSError(domain: "Test", code: 34, userInfo: [NSLocalizedDescriptionKey: "Both operations must be stored independently"])
         }
     }
 
@@ -965,6 +1074,75 @@ public final class MeshProtocolTests {
         }
         guard retransmittedOp.operationId == opId && retransmittedOp.entityId == msgId else {
             throw NSError(domain: "Test", code: 43, userInfo: [NSLocalizedDescriptionKey: "Retransmitted operation changed operationId or entityId"])
+        }
+    }
+
+    // MARK: - Test 14: Fault-injected atomic inbound persistence rollback & zero ACK
+    public func testFaultInjectedInboundPersistenceRollback() throws {
+        let dbPath = "/tmp/offgrid_atomic_inbound_\(UUID().uuidString.lowercased()).sqlite"
+        defer { try? FileManager.default.removeItem(atPath: dbPath) }
+
+        let db = SQLiteDatabase(inMemory: false, customPath: dbPath)
+        let repo = MessageRepository(database: db)
+        let opRepo = OperationQueueRepository(database: db)
+
+        let msgId = UUID().uuidString.lowercased()
+        let opId = UUID().uuidString.lowercased()
+        let senderId = UUID().uuidString.lowercased()
+
+        let message = OFFGRIDMessage(
+            id: msgId,
+            senderId: senderId,
+            senderName: "Sender",
+            content: "Transactional atomic message",
+            type: .chat,
+            status: .relayed
+        )
+        let op = OFFGRIDOperation(
+            id: opId,
+            entityType: .message,
+            entityId: msgId,
+            action: .create,
+            originNodeId: senderId,
+            payloadJson: "{\"text\":\"Transactional atomic message\",\"recipientNodeId\":\"*\"}",
+            syncStatus: .peerRelayed
+        )
+
+        // Inject failure between message write and operation write within the transaction
+        SQLiteDatabase.inboundPersistenceFaultInjection = {
+            throw NSError(domain: "org.offgrid.fault", code: 777, userInfo: [NSLocalizedDescriptionKey: "Simulated mid-transaction power loss between message and operation writes"])
+        }
+        defer {
+            SQLiteDatabase.inboundPersistenceFaultInjection = nil
+        }
+
+        var caughtInjectedError = false
+        var ackTransmitted = false
+        do {
+            try repo.saveMessageWithOperation(message: message, operation: op)
+            ackTransmitted = true // Should NEVER execute
+        } catch {
+            caughtInjectedError = true
+            ackTransmitted = false
+        }
+
+        guard caughtInjectedError else {
+            throw NSError(domain: "Test", code: 44, userInfo: [NSLocalizedDescriptionKey: "Injected fault did not trigger"])
+        }
+        guard !ackTransmitted else {
+            throw NSError(domain: "Test", code: 45, userInfo: [NSLocalizedDescriptionKey: "ACK was transmitted despite transaction failure! Violation of Requirement 3."])
+        }
+
+        // Verify full atomicity rollback on the same SQLite connection:
+        // NEITHER the message NOR the operation was committed!
+        let storedMessage = repo.getMessage(id: msgId)
+        let storedOperation = opRepo.getOperation(byOperationId: opId)
+
+        guard storedMessage == nil else {
+            throw NSError(domain: "Test", code: 46, userInfo: [NSLocalizedDescriptionKey: "Message was partially committed despite transaction rollback! Atomicity failure."])
+        }
+        guard storedOperation == nil else {
+            throw NSError(domain: "Test", code: 47, userInfo: [NSLocalizedDescriptionKey: "Operation was partially committed despite transaction rollback! Atomicity failure."])
         }
     }
 }

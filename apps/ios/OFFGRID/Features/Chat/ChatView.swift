@@ -120,9 +120,9 @@ struct DeliveryStatusBadge: View {
         case .localOnly: return "Local Only"
         case .queued: return "Queued"
         case .pending: return "Pending"
-        case .relayed: return "Relayed"
-        case .delivered: return "Delivered"
-        case .synced: return "Synchronized"
+        case .relayed: return "Peer Stored"
+        case .delivered: return "Recipient Acknowledged"
+        case .synced: return "Backend Committed"
         case .failed: return "Failed (Tap)"
         case .draft: return "Draft"
         }

@@ -220,7 +220,7 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
         do {
             try ContractV1Validator.validateEnvelope(ackEnvelope)
         } catch {
-            self.logger.log(.error, "Failed to validate ACK envelope: \(error)")
+            self.logger.log(.error, "Failed to validate PEER_STORED ACK envelope: \(error)")
             return
         }
 
@@ -231,6 +231,46 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
 
         multipeerManager?.broadcast(data: ackData)
         logger.log(.ack, "Dispatched PEER_STORED ACK for op [\(op.operationId.prefix(8))] to [\(toNodeId.prefix(8))]")
+    }
+
+    private func sendRecipientAck(for op: ContractV1.Operation, packetId: String, toNodeId: String) {
+        let ack = ContractV1.Acknowledgment(
+            schemaVersion: 1,
+            ackId: UUID().uuidString.lowercased(),
+            operationId: op.operationId.lowercased(),
+            stage: .recipientAcknowledged,
+            acknowledgingNodeId: self.localNodeId.lowercased(),
+            timestamp: Int64(Date().timeIntervalSince1970 * 1000),
+            packetId: packetId.lowercased(),
+            entityVersion: nil
+        )
+
+        let ackEnvelope = ContractV1.Envelope(
+            version: 1,
+            packetId: UUID().uuidString.lowercased(),
+            sourceNodeId: self.localNodeId.lowercased(),
+            destinationNodeId: toNodeId.lowercased(),
+            timestamp: Int64(Date().timeIntervalSince1970 * 1000),
+            ttl: 5,
+            hopCount: 0,
+            type: .ack,
+            payload: .ack(ack)
+        )
+
+        do {
+            try ContractV1Validator.validateEnvelope(ackEnvelope)
+        } catch {
+            self.logger.log(.error, "Failed to validate RECIPIENT_ACKNOWLEDGED envelope: \(error)")
+            return
+        }
+
+        guard let ackData = try? JSONEncoder().encode(ackEnvelope) else {
+            self.logger.log(.error, "Failed to encode RECIPIENT_ACKNOWLEDGED envelope for op [\(op.operationId.prefix(8))]")
+            return
+        }
+
+        multipeerManager?.broadcast(data: ackData)
+        logger.log(.ack, "Dispatched RECIPIENT_ACKNOWLEDGED ACK for op [\(op.operationId.prefix(8))] to [\(toNodeId.prefix(8))]")
     }
 
     // MARK: - PeerDiscoveryDelegate
@@ -357,18 +397,18 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
                 let existingOp = self.operationRepository.getOperation(byOperationId: op.operationId)
                 let isDuplicate = (existingMsg != nil || existingOp != nil)
 
-                // Enqueue operation into SQLite with conflict detection
+                // Atomically persist message AND operation into SQLite in a single transaction
+                let insertRes: SQLiteDatabase.OperationInsertionResult
                 do {
-                    let insertRes = try self.operationRepository.enqueue(operation: offgridOp)
-                    self.messageRepository.saveMessage(receivedMessage)
+                    insertRes = try self.messageRepository.saveMessageWithOperation(message: receivedMessage, operation: offgridOp)
                     if insertRes == .duplicateIdentical {
                         self.logger.log(.rx, "Duplicate operation [\(op.operationId.prefix(8))] received (idempotent no-op)")
                     }
                 } catch SQLiteDatabase.OperationStorageError.conflictingPayload(let opId, let existing, let new) {
-                    self.logger.log(.error, "Conflicting operation payload for [\(opId.prefix(8))]: existing='\(existing)', new='\(new)'. Dropping without ACK.")
+                    self.logger.log(.error, "Conflicting operation payload for [\(opId.prefix(8))]: existing='\(existing)', new='\(new)'. Transaction rolled back; dropping without ACK.")
                     return
                 } catch {
-                    self.logger.log(.error, "Failed to persist inbound operation [\(op.operationId.prefix(8))]: \(error). Dropping without ACK.")
+                    self.logger.log(.error, "Failed to persist inbound operation & message [\(op.operationId.prefix(8))]: \(error). Transaction rolled back; dropping without ACK.")
                     return
                 }
 
@@ -383,8 +423,14 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
                     NotificationCenter.default.post(name: TransportManager.didUpdateMessagesNotification, object: nil)
                 }
 
-                // Transmit PEER_STORED ACK only after durable storage succeeds
-                self.sendPeerStoredAck(for: op, packetId: envelope.packetId, toNodeId: envelope.sourceNodeId)
+                // Transmit ACK only after durable storage succeeds
+                if envelope.destinationNodeId.caseInsensitiveCompare(self.localNodeId) == .orderedSame {
+                    // Local node IS the designated recipient of a direct packet
+                    self.sendRecipientAck(for: op, packetId: envelope.packetId, toNodeId: envelope.sourceNodeId)
+                } else {
+                    // Peer or intermediate node: strictly emit PEER_STORED
+                    self.sendPeerStoredAck(for: op, packetId: envelope.packetId, toNodeId: envelope.sourceNodeId)
+                }
 
             case .ack:
                 guard case .ack(let ack) = envelope.payload else {
@@ -415,19 +461,30 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
                     targetEntityId = ack.operationId
                 }
 
-                // Update status based on ACK stage
-                if ack.stage == .backendCommitted {
+                // Update status strictly based on ACK stage
+                switch ack.stage {
+                case .peerStored:
+                    // Peer durably stored the operation: mark as peer-stored / relayed
+                    self.operationRepository.markStatus(operationId: ack.operationId, status: .peerRelayed)
+                    self.messageRepository.updateStatus(id: targetEntityId, status: .relayed)
+                    self.logger.log(.ack, "Operation [\(ack.operationId.prefix(8))] confirmed PEER_STORED on mesh peer \(peerId)")
+
+                case .backendCommitted:
+                    // Backend committed the operation: mark backend sync complete
                     self.operationRepository.markStatus(operationId: ack.operationId, status: .gatewaySynced)
                     self.messageRepository.updateStatus(id: targetEntityId, status: .synced)
-                } else {
-                    // PEER_STORED or RECIPIENT_ACKNOWLEDGED transitions to peerRelayed / delivered
+                    self.logger.log(.ack, "Operation [\(ack.operationId.prefix(8))] confirmed BACKEND_COMMITTED by gateway")
+
+                case .recipientAcknowledged:
+                    // Authorized recipient explicitly acknowledged it: mark as delivered
                     self.operationRepository.markStatus(operationId: ack.operationId, status: .peerRelayed)
                     self.messageRepository.updateStatus(id: targetEntityId, status: .delivered)
+                    self.logger.log(.ack, "Operation [\(ack.operationId.prefix(8))] confirmed RECIPIENT_ACKNOWLEDGED by recipient \(peerId)")
                 }
 
                 // If acknowledged message was an SOS, broadcast SOS notification
                 if let ackedMsg = self.messageRepository.getMessage(id: targetEntityId), ackedMsg.type == .sos {
-                    self.logger.log(.ack, "Emergency SOS [\(targetEntityId.prefix(8))] confirmed delivered to peer mesh!")
+                    self.logger.log(.ack, "Emergency SOS [\(targetEntityId.prefix(8))] status updated with ACK stage: \(ack.stage.rawValue)")
                     NotificationCenter.default.post(name: TransportManager.didUpdateSOSNotification, object: ackedMsg)
                 }
 

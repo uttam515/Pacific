@@ -62,9 +62,9 @@ public struct SOSView: View {
                             HStack {
                                 SOSStatusBadge(status: status)
                                 Spacer()
-                                Text(status == .delivered ? "PEER CONFIRMED" : "RADIO TRANSIT")
+                                Text(status == .delivered ? "RECIPIENT ACKNOWLEDGED" : (status == .relayed ? "PEER STORED" : (status == .synced ? "BACKEND COMMITTED" : "RADIO TRANSIT")))
                                     .font(.caption2.bold())
-                                    .foregroundColor(status == .delivered ? .green : .orange)
+                                    .foregroundColor(status == .delivered ? .green : (status == .relayed ? .blue : (status == .synced ? .purple : .orange)))
                             }
 
                             Text(message)
@@ -191,9 +191,9 @@ struct SOSStatusBadge: View {
         switch status {
         case .localOnly: return "Local SQLite Only"
         case .queued: return "Queued for Mesh"
-        case .relayed: return "Relayed (In Transit)"
-        case .delivered: return "Acknowledged by Peer"
-        case .synced: return "Gateway Synced"
+        case .relayed: return "Peer Stored (Relayed)"
+        case .delivered: return "Recipient Acknowledged"
+        case .synced: return "Backend Committed"
         case .failed: return "Transmission Failed"
         default: return status.rawValue
         }

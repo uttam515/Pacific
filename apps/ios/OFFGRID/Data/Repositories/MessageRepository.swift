@@ -5,7 +5,8 @@ public protocol MessageRepositoryProtocol: Sendable {
     func getMessage(id: String) -> OFFGRIDMessage?
     func saveMessage(_ message: OFFGRIDMessage)
     func updateStatus(id: String, status: MessageDeliveryStatus)
-    func saveMessageWithOperation(message: OFFGRIDMessage, operation: OFFGRIDOperation) throws
+    @discardableResult
+    func saveMessageWithOperation(message: OFFGRIDMessage, operation: OFFGRIDOperation) throws -> SQLiteDatabase.OperationInsertionResult
 }
 
 public final class MessageRepository: MessageRepositoryProtocol {
@@ -31,7 +32,8 @@ public final class MessageRepository: MessageRepositoryProtocol {
         database.updateMessageStatus(id: id, status: status)
     }
 
-    public func saveMessageWithOperation(message: OFFGRIDMessage, operation: OFFGRIDOperation) throws {
-        try database.saveMessageWithOperation(message: message, operation: operation)
+    @discardableResult
+    public func saveMessageWithOperation(message: OFFGRIDMessage, operation: OFFGRIDOperation) throws -> SQLiteDatabase.OperationInsertionResult {
+        return try database.saveMessageWithOperation(message: message, operation: operation)
     }
 }
