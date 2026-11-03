@@ -5,13 +5,17 @@
   "description": "OFFGRID — Software-Defined Decentralized Networking & Offline-First Synchronization System",
   "scripts": {
     "build": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run build",
-    "lint": "pnpm -r run lint",
-    "test": "pnpm -r run test",
-    "clean": "pnpm -r run clean"
+    "typecheck": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run typecheck",
+    "lint": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run lint",
+    "test": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run test",
+    "clean": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run clean"
   },
   "packageManager": "pnpm@12.9.1",
   "engines": {
     "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
   },
   "keywords": [
     "offline-first",

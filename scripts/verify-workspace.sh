@@ -9,14 +9,14 @@ echo "Checking Node.js & pnpm..."
 node -v
 pnpm -v
 
-echo "Checking Git branches..."
-git branch -a
+echo "Checking Git repository..."
+git rev-parse --is-inside-work-tree >/dev/null && echo "Git repository verified."
 
-echo "Checking Xcode tools..."
+echo "Checking Xcode tools (macOS only)..."
 if command -v xcodebuild >/dev/null 2>&1; then
     xcodebuild -version
 else
-    echo "xcodebuild not installed or not in PATH"
+    echo "Notice: xcodebuild not present (non-macOS environment or CLI not linked)."
 fi
 
 echo "Checking Android SDK..."
