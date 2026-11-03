@@ -61,9 +61,9 @@ public final class SOSViewModel: ObservableObject {
         let allMessages = messageRepository.getMessages()
         let sosMessages = allMessages.filter { $0.type == .sos }
 
-        self.activeAlerts = sosMessages.filter { $0.senderId != nodeId }
+        self.activeAlerts = sosMessages.filter { $0.senderId.caseInsensitiveCompare(nodeId) != .orderedSame }
             .sorted(by: { $0.timestamp > $1.timestamp })
-        self.mySentSOS = sosMessages.filter { $0.senderId == nodeId }
+        self.mySentSOS = sosMessages.filter { $0.senderId.caseInsensitiveCompare(nodeId) == .orderedSame }
             .sorted(by: { $0.timestamp > $1.timestamp })
 
         // Refresh outgoing status if tracking a recent beacon

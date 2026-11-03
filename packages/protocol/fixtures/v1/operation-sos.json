@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "operationId": "00000000-0000-4000-8000-000000000025",
+  "originNodeId": "00000000-0000-4000-8000-000000000001",
+  "entityId": "00000000-0000-4000-8000-000000000012",
+  "timestamp": 1793721600000,
+  "lamportClock": 1,
+  "entityType": "SOS",
+  "action": "CREATE",
+  "baseVersion": 0,
+  "payload": {
+    "text": "Assistance requested",
+    "category": "ASSISTANCE",
+    "location": {
+      "label": "Test courtyard"
+    }
+  }
+}

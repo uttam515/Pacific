@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "requestId": "00000000-0000-4000-8000-000000000050",
+  "results": [
+    {
+      "operationId": "00000000-0000-4000-8000-000000000020",
+      "outcome": "COMMITTED",
+      "duplicate": false,
+      "entityVersion": 1,
+      "ack": {
+        "schemaVersion": 1,
+        "ackId": "00000000-0000-4000-8000-000000000040",
+        "operationId": "00000000-0000-4000-8000-000000000020",
+        "stage": "BACKEND_COMMITTED",
+        "acknowledgingNodeId": "00000000-0000-4000-8000-000000000003",
+        "timestamp": 1793721602000,
+        "entityVersion": 1
+      }
+    }
+  ],
+  "serverLamportClock": 2
+}

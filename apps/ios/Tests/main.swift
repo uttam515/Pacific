@@ -3,15 +3,31 @@ import Foundation
 print("Starting OFFGRID iOS Test Suite Execution...")
 
 let persistenceTests = SQLitePersistenceTests()
-let persistencePassed = persistenceTests.runAllTests()
+let persistenceResult = persistenceTests.runAllTests()
 
 let meshTests = MeshProtocolTests()
-let meshPassed = meshTests.runAllTests()
+let meshResult = meshTests.runAllTests()
 
-if persistencePassed && meshPassed {
-    print("ALL TESTS PASSED SUCCESSFULLY! (15/15)")
+let fixtureTests = ContractV1FixtureTests()
+let fixtureResult = fixtureTests.runAllTests()
+
+let totalPassed = persistenceResult.passed + meshResult.passed + fixtureResult.passed
+let totalTests = persistenceResult.total + meshResult.total + fixtureResult.total
+
+print("\n===========================================")
+print("  OFFGRID iOS TEST EXECUTION BREAKDOWN     ")
+print("===========================================")
+print("  - SQLite Persistence Tests:  \(persistenceResult.passed)/\(persistenceResult.total)")
+print("  - Mesh Protocol Tests:       \(meshResult.passed)/\(meshResult.total)")
+print("  - Contract v1 & Fix Tests:   \(fixtureResult.passed)/\(fixtureResult.total)")
+print("-------------------------------------------")
+print("  TOTAL PASSED: \(totalPassed)/\(totalTests)")
+print("===========================================")
+
+if totalPassed == totalTests {
+    print("ALL TESTS PASSED SUCCESSFULLY! (\(totalPassed)/\(totalTests))")
     exit(0)
 } else {
-    print("TEST SUITE FAILED!")
+    print("TEST SUITE FAILED! (\(totalPassed)/\(totalTests) passed)")
     exit(1)
 }

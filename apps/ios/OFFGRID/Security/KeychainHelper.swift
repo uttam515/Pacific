@@ -33,14 +33,6 @@ public final class KeychainHelper: Sendable {
     }
 
     public func getOrCreateNodeId() -> String {
-        let key = "offgrid_node_id"
-        if let data = read(key: key), let existingId = String(data: data, encoding: .utf8) {
-            return existingId
-        }
-        let newId = UUID().uuidString
-        if let data = newId.data(using: .utf8) {
-            _ = save(key: key, data: data)
-        }
-        return newId
+        return InstallationIdentityManager.shared.getNodeId()
     }
 }

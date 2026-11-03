@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "requestId": "00000000-0000-4000-8000-000000000050",
+  "results": [
+    {
+      "operationId": "00000000-0000-4000-8000-000000000023",
+      "outcome": "CONFLICT",
+      "duplicate": false,
+      "conflictId": "00000000-0000-4000-8000-000000000060"
+    }
+  ],
+  "serverLamportClock": 2
+}

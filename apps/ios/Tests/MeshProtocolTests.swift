@@ -1,31 +1,33 @@
 import Foundation
 
 public final class MeshProtocolTests {
-    public func runAllTests() -> Bool {
+    public func runAllTests() -> (passed: Int, total: Int) {
         print("\n===========================================")
         print("  OFFGRID iOS Mesh Protocol & Delivery Tests")
         print("===========================================")
 
-        var passed = true
-        passed = runTest("1. Packet header validation & invariant checks", testPacketHeaderValidation) && passed
-        passed = runTest("2. Deterministic multipeer tie-breaker comparison", testTieBreakerLogic) && passed
-        passed = runTest("3. End-to-end Device-to-Device message & delivery ACK simulation", testDeviceToDeviceMessageAndAckFlow) && passed
-        passed = runTest("4. Inbound duplicate message suppression & idempotent ACK", testDuplicateSuppressionAndAck) && passed
-        passed = runTest("5. Offline queued message flushing on peer connect", testOfflineQueueFlushing) && passed
-        passed = runTest("6. Emergency SOS atomic creation and persistence", testSOSCreationAndPersistence) && passed
-        passed = runTest("7. End-to-end SOS transmission, entity preservation, and ACK delivery", testSOSTransmissionAndAckFlow) && passed
-        passed = runTest("8. SOS queue flushing on peer link restoration", testSOSQueueFlushing) && passed
-        passed = runTest("9. Inbound duplicate SOS suppression & idempotency", testDuplicateSOSSuppression) && passed
-        passed = runTest("10. Active incoming vs outgoing SOS feed separation", testSOSFeedSeparation) && passed
+        var passedCount = 0
+        let totalCount = 10
+
+        if runTest("1. Packet header validation & invariant checks", testPacketHeaderValidation) { passedCount += 1 }
+        if runTest("2. Deterministic multipeer tie-breaker comparison", testTieBreakerLogic) { passedCount += 1 }
+        if runTest("3. End-to-end Device-to-Device message & delivery ACK simulation", testDeviceToDeviceMessageAndAckFlow) { passedCount += 1 }
+        if runTest("4. Inbound duplicate message suppression & idempotent ACK", testDuplicateSuppressionAndAck) { passedCount += 1 }
+        if runTest("5. Offline queued message flushing on peer connect", testOfflineQueueFlushing) { passedCount += 1 }
+        if runTest("6. Emergency SOS atomic creation and persistence", testSOSCreationAndPersistence) { passedCount += 1 }
+        if runTest("7. End-to-end SOS transmission, entity preservation, and ACK delivery", testSOSTransmissionAndAckFlow) { passedCount += 1 }
+        if runTest("8. SOS queue flushing on peer link restoration", testSOSQueueFlushing) { passedCount += 1 }
+        if runTest("9. Inbound duplicate SOS suppression & idempotency", testDuplicateSOSSuppression) { passedCount += 1 }
+        if runTest("10. Active incoming vs outgoing SOS feed separation", testSOSFeedSeparation) { passedCount += 1 }
 
         print("===========================================")
-        if passed {
-            print("  ALL MESH PROTOCOL TESTS PASSED!")
+        if passedCount == totalCount {
+            print("  ALL MESH PROTOCOL TESTS PASSED! (\(passedCount)/\(totalCount))")
         } else {
-            print("  SOME TESTS FAILED!")
+            print("  SOME TESTS FAILED: \(passedCount)/\(totalCount)")
         }
         print("===========================================\n")
-        return passed
+        return (passed: passedCount, total: totalCount)
     }
 
     private func runTest(_ name: String, _ testBlock: () throws -> Void) -> Bool {
@@ -455,7 +457,7 @@ public final class MeshProtocolTests {
             payloadJson: try String(data: JSONEncoder().encode(receivedB), encoding: .utf8)!,
             syncStatus: .peerRelayed
         )
-        opRepoB.enqueue(operation: opB)
+        _ = try opRepoB.enqueue(operation: opB)
 
         // Verify Receiver stored with correct types
         let storedB = repoB.getMessage(id: sosId)

@@ -35,6 +35,9 @@
 		E7269179DDF2054C9B75F3F7 /* App/OFFGRIDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F172F54D1623EAC96196CC89 /* App/OFFGRIDApp.swift */; };
 		E9605CE2E09F7E12CF92CE04 /* Features/SOS/SOSView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29CC75E6A81CEF4D33A6A3CE /* Features/SOS/SOSView.swift */; };
 		E9ADD7048EBE6F0574D17D40 /* Data/Repositories/OperationQueueRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE61BF346FE133DBFBC418B /* Data/Repositories/OperationQueueRepository.swift */; };
+		B1B2C3D4E5F6000100000001 /* Protocol/ContractV1Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000100000001 /* Protocol/ContractV1Models.swift */; };
+		B1B2C3D4E5F6000100000002 /* Protocol/ContractV1Validators.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000100000002 /* Protocol/ContractV1Validators.swift */; };
+		B1B2C3D4E5F6000100000003 /* Security/InstallationIdentityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000100000003 /* Security/InstallationIdentityManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -68,6 +71,9 @@
 		F6329841ABBF95E9ADC57841 /* Features/Chat/ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Chat/ChatViewModel.swift; sourceTree = "<group>"; };
 		FC6BD1C77E169C0A722E4D11 /* Protocol/PacketModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocol/PacketModels.swift; sourceTree = "<group>"; };
 		FE72009CEE54F9343532FB69 /* Features/Files/FilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Files/FilesView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000100000001 /* Protocol/ContractV1Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocol/ContractV1Models.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000100000002 /* Protocol/ContractV1Validators.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocol/ContractV1Validators.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000100000003 /* Security/InstallationIdentityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Security/InstallationIdentityManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -111,6 +117,9 @@
 				F41160E6A1E3B1B15E1014A6 /* Sync/SyncEngine.swift */,
 				FC6BD1C77E169C0A722E4D11 /* Protocol/PacketModels.swift */,
 				0699CA51ED6D595EEDF5FDB1 /* Security/KeychainHelper.swift */,
+				A1B2C3D4E5F6000100000001 /* Protocol/ContractV1Models.swift */,
+				A1B2C3D4E5F6000100000002 /* Protocol/ContractV1Validators.swift */,
+				A1B2C3D4E5F6000100000003 /* Security/InstallationIdentityManager.swift */,
 				AB50414DD546CCBA7BE40984 /* Resources/Assets.xcassets */,
 				E2DAEB0125AFE787A6B01E78 /* Resources/Info.plist */,
 			);
@@ -223,6 +232,9 @@
 				9490F3E460C785BA14AF7C3B /* Sync/SyncEngine.swift in Sources */,
 				C26E3BCF8D9A2FC7799CDE18 /* Protocol/PacketModels.swift in Sources */,
 				09404D0272B669FEC3892E7D /* Security/KeychainHelper.swift in Sources */,
+				B1B2C3D4E5F6000100000001 /* Protocol/ContractV1Models.swift in Sources */,
+				B1B2C3D4E5F6000100000002 /* Protocol/ContractV1Validators.swift in Sources */,
+				B1B2C3D4E5F6000100000003 /* Security/InstallationIdentityManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

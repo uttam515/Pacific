@@ -15,28 +15,30 @@ public final class SQLitePersistenceTests {
         try? fileManager.removeItem(atPath: testDbPath + "-shm")
     }
 
-    public func runAllTests() -> Bool {
+    public func runAllTests() -> (passed: Int, total: Int) {
         print("\n===========================================")
         print("  OFFGRID iOS SQLite Persistence Test Suite")
         print("===========================================")
 
-        var passed = true
-        passed = runTest("1. Message creation without internet & local SQLite save", testMessageCreationAndPersistence) && passed
-        passed = runTest("2. Simulate termination, reopen, and verify persistence", testApplicationTerminationAndReopen) && passed
-        passed = runTest("3. Atomic message & operation transaction integrity", testAtomicTransaction) && passed
-        passed = runTest("4. Duplicate operation suppression & idempotency", testDuplicateOperationSuppression) && passed
-        passed = runTest("5. Message & operation status lifecycle transitions", testStatusTransitions) && passed
+        var passedCount = 0
+        let totalCount = 5
+
+        if runTest("1. Message creation without internet & local SQLite save", testMessageCreationAndPersistence) { passedCount += 1 }
+        if runTest("2. Simulate termination, reopen, and verify persistence", testApplicationTerminationAndReopen) { passedCount += 1 }
+        if runTest("3. Atomic message & operation transaction integrity", testAtomicTransaction) { passedCount += 1 }
+        if runTest("4. Duplicate operation suppression & idempotency", testDuplicateOperationSuppression) { passedCount += 1 }
+        if runTest("5. Message & operation status lifecycle transitions", testStatusTransitions) { passedCount += 1 }
 
         cleanUp()
 
         print("===========================================")
-        if passed {
-            print("  ALL SQLITE PERSISTENCE TESTS PASSED!")
+        if passedCount == totalCount {
+            print("  ALL SQLITE PERSISTENCE TESTS PASSED! (\(passedCount)/\(totalCount))")
         } else {
-            print("  SOME TESTS FAILED!")
+            print("  SOME TESTS FAILED: \(passedCount)/\(totalCount)")
         }
         print("===========================================\n")
-        return passed
+        return (passed: passedCount, total: totalCount)
     }
 
     private func runTest(_ name: String, _ testBlock: () throws -> Void) -> Bool {
@@ -231,7 +233,7 @@ public final class SQLitePersistenceTests {
             retryCount: 0
         )
 
-        opRepo.enqueue(operation: op1)
+        _ = try opRepo.enqueue(operation: op1)
         opRepo.markStatus(operationId: opId, status: .peerRelayed)
         opRepo.incrementRetry(operationId: opId)
 
@@ -246,7 +248,7 @@ public final class SQLitePersistenceTests {
             syncStatus: .localOnly,
             retryCount: 0
         )
-        opRepo.enqueue(operation: opDuplicate)
+        _ = try opRepo.enqueue(operation: opDuplicate)
 
         // Existing state must NOT be wiped or reset
         guard let savedOp = opRepo.getOperation(id: opId) else {

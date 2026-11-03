@@ -241,7 +241,15 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
                         payloadJson: jsonString,
                         syncStatus: .peerRelayed
                     )
-                    self.operationRepository.enqueue(operation: op)
+                    do {
+                        let insertRes = try self.operationRepository.enqueue(operation: op)
+                        if insertRes == .duplicateIdentical {
+                            self.logger.log(.rx, "Inbound operation [\(op.id.prefix(8))] is an identical duplicate (idempotent no-op)")
+                        }
+                    } catch {
+                        self.logger.log(.error, "Integrity conflict rejecting operation [\(op.id)]: \(error)")
+                        return
+                    }
                 }
 
                 if receivedMessage.type == .sos {

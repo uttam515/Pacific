@@ -1,9 +1,11 @@
 import Foundation
 
 public protocol OperationQueueRepositoryProtocol: Sendable {
-    func enqueue(operation: OFFGRIDOperation)
+    @discardableResult
+    func enqueue(operation: OFFGRIDOperation) throws -> SQLiteDatabase.OperationInsertionResult
     func getPendingOperations() -> [OFFGRIDOperation]
     func getOperation(id: String) -> OFFGRIDOperation?
+    func getOperation(byOperationId operationId: String) -> OFFGRIDOperation?
     func markStatus(operationId: String, status: SyncStatus)
     func incrementRetry(operationId: String)
 }
@@ -15,8 +17,9 @@ public final class OperationQueueRepository: OperationQueueRepositoryProtocol {
         self.database = database
     }
 
-    public func enqueue(operation: OFFGRIDOperation) {
-        database.insertOperation(operation)
+    @discardableResult
+    public func enqueue(operation: OFFGRIDOperation) throws -> SQLiteDatabase.OperationInsertionResult {
+        return try database.insertOperation(operation)
     }
 
     public func getPendingOperations() -> [OFFGRIDOperation] {
@@ -25,6 +28,10 @@ public final class OperationQueueRepository: OperationQueueRepositoryProtocol {
 
     public func getOperation(id: String) -> OFFGRIDOperation? {
         return database.getOperation(byId: id)
+    }
+
+    public func getOperation(byOperationId operationId: String) -> OFFGRIDOperation? {
+        return database.getOperation(byOperationId: operationId)
     }
 
     public func markStatus(operationId: String, status: SyncStatus) {

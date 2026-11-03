@@ -1,0 +1,137 @@
+{
+  "contractRelease": "1.0.0-rc.2",
+  "fixtures": {
+    "operation-message.json": {
+      "schema": "Operation",
+      "valid": true
+    },
+    "transport-operation.json": {
+      "schema": "Envelope",
+      "valid": true
+    },
+    "ack-backend.json": {
+      "schema": "Acknowledgment",
+      "valid": true
+    },
+    "ack-peer.json": {
+      "schema": "Acknowledgment",
+      "valid": true
+    },
+    "ack-recipient.json": {
+      "schema": "Acknowledgment",
+      "valid": true
+    },
+    "transport-ack.json": {
+      "schema": "Envelope",
+      "valid": true
+    },
+    "sync-push-request.json": {
+      "schema": "PushRequest",
+      "valid": true
+    },
+    "sync-push-response.json": {
+      "schema": "PushResponse",
+      "valid": true
+    },
+    "sync-push-duplicate-response.json": {
+      "schema": "PushResponse",
+      "valid": true
+    },
+    "sync-pull-response.json": {
+      "schema": "PullResponse",
+      "valid": true
+    },
+    "sync-pull-empty.json": {
+      "schema": "PullResponse",
+      "valid": true
+    },
+    "announcement-create.json": {
+      "schema": "Operation",
+      "valid": true
+    },
+    "announcement-edit-a.json": {
+      "schema": "Operation",
+      "valid": true
+    },
+    "announcement-edit-b.json": {
+      "schema": "Operation",
+      "valid": true
+    },
+    "conflict-open.json": {
+      "schema": "Conflict",
+      "valid": true
+    },
+    "conflicts-response.json": {
+      "schema": "ConflictList",
+      "valid": true
+    },
+    "sync-push-conflict-response.json": {
+      "schema": "PushResponse",
+      "valid": true
+    },
+    "conflict-resolve-request.json": {
+      "schema": "ResolveRequest",
+      "valid": true
+    },
+    "conflict-resolve-response.json": {
+      "schema": "ResolveResponse",
+      "valid": true
+    },
+    "sync-notification.json": {
+      "schema": "Notification",
+      "valid": true
+    },
+    "receipt-request.json": {
+      "schema": "ReceiptRequest",
+      "valid": true
+    },
+    "receipt-response.json": {
+      "schema": "ReceiptResponse",
+      "valid": true
+    },
+    "error-stale-resolution.json": {
+      "schema": "ErrorResponse",
+      "valid": true
+    },
+    "dashboard-snapshot.json": {
+      "schema": "DashboardSnapshot",
+      "valid": true
+    },
+    "operation-sos.json": {
+      "schema": "Operation",
+      "valid": true
+    },
+    "invalid-operation-string-payload.json": {
+      "schema": "Operation",
+      "valid": false
+    },
+    "invalid-negative-ttl.json": {
+      "schema": "Envelope",
+      "valid": false
+    },
+    "invalid-unsafe-clock.json": {
+      "schema": "Operation",
+      "valid": false
+    },
+    "invalid-backend-ack-missing-version.json": {
+      "schema": "Acknowledgment",
+      "valid": false
+    },
+    "invalid-update-missing-base.json": {
+      "schema": "Operation",
+      "valid": false
+    },
+    "invalid-unknown-version.json": {
+      "schema": "PushRequest",
+      "valid": false
+    },
+    "invalid-announcement-blank.json": {
+      "schema": "Operation",
+      "valid": false
+    },
+    "health.json": {
+      "schema": "Health",
+      "valid": true
+    }
+  }
+}

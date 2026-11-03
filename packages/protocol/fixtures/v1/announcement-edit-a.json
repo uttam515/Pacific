@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "operationId": "00000000-0000-4000-8000-000000000022",
+  "originNodeId": "00000000-0000-4000-8000-000000000001",
+  "entityId": "00000000-0000-4000-8000-000000000011",
+  "timestamp": 1793721600000,
+  "lamportClock": 2,
+  "entityType": "ANNOUNCEMENT",
+  "action": "UPDATE",
+  "baseVersion": 1,
+  "payload": {
+    "text": "Library shelter open until 18:00."
+  }
+}
