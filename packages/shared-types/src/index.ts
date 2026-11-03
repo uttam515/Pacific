@@ -24,3 +24,5 @@ export interface NodeStatus {
   isGateway: boolean;
   batteryLevel?: number;
 }
+
+export type { ContractV1 } from './contract-v1.js';
