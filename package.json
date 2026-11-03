@@ -2,14 +2,16 @@
   "name": "offgrid",
   "version": "0.1.0",
   "private": true,
-  "description": "OFFGRID \u2014 Software-Defined Decentralized Networking & Offline-First Synchronization System",
+  "description": "OFFGRID — Software-Defined Decentralized Networking & Offline-First Synchronization System",
   "scripts": {
     "build": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run build",
     "typecheck": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run typecheck",
     "lint": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run lint",
     "test": "pnpm run contract:test && pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run test",
     "clean": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run clean",
-    "contract:test": "node --test scripts/contract.test.mjs scripts/ble-framing.test.mjs"
+    "contract:test": "node --test scripts/contract.test.mjs scripts/ble-framing.test.mjs",
+    "contract:types": "node scripts/contract-types.mjs",
+    "contract:types:check": "node scripts/contract-types.mjs --check"
   },
   "packageManager": "pnpm@12.9.1",
   "engines": {
@@ -17,7 +19,8 @@
   },
   "devDependencies": {
     "typescript": "^5.4.0",
-    "ajv": "^8.17.1"
+    "ajv": "^8.17.1",
+    "json-schema-to-typescript": "^15.0.0"
   },
   "keywords": [
     "offline-first",
