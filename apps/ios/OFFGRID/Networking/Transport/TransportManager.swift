@@ -5,6 +5,7 @@ import Combine
 @MainActor
 public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
     public static let didUpdateMessagesNotification = Notification.Name("OFFGRIDDidUpdateMessagesNotification")
+    public static let didUpdateSOSNotification = Notification.Name("OFFGRIDDidUpdateSOSNotification")
 
     @Published public var activePeers: [DiscoveredPeer] = []
     @Published public var connectedPeers: [DiscoveredPeer] = []
@@ -124,7 +125,8 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
 
         logger.log(.system, "Flushing \(eligibleOps.count) pending operation(s) to connected peers")
         for op in eligibleOps {
-            if op.entityType == .message, let message = messageRepository.getMessage(id: op.entityId) {
+            if (op.entityType == .message || op.entityType == .sos),
+               let message = messageRepository.getMessage(id: op.entityId) {
                 broadcastPersistedMessage(message, operationId: op.id)
             }
         }
@@ -215,22 +217,23 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
 
                 // Prevent duplicate message insertion
                 if let _ = self.messageRepository.getMessage(id: messageId) {
-                    self.logger.log(.rx, "Duplicate message [\(messageId.prefix(8))] received from \(peerId); suppressing insert")
+                    self.logger.log(.rx, "Duplicate \(header.type.rawValue) [\(messageId.prefix(8))] received from \(peerId); suppressing insert")
                     // Still return ACK in case previous ACK was lost in transit
                     self.sendAck(for: messageId, toNodeId: header.sourceNodeId)
                     return
                 }
 
-                // New message: persist locally with delivered status
+                // New message/SOS: persist locally with delivered status
                 var receivedMessage = envelope.payload
                 receivedMessage.status = .delivered
                 self.messageRepository.saveMessage(receivedMessage)
 
-                // Enqueue operation in SQLite
+                // Enqueue operation in SQLite preserving .sos entityType
+                let entityType: OperationEntity = (receivedMessage.type == .sos) ? .sos : .message
                 if let json = try? JSONEncoder().encode(receivedMessage),
                    let jsonString = String(data: json, encoding: .utf8) {
                     let op = OFFGRIDOperation(
-                        entityType: .message,
+                        entityType: entityType,
                         entityId: receivedMessage.id,
                         action: .create,
                         originNodeId: receivedMessage.senderId,
@@ -241,7 +244,12 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
                     self.operationRepository.enqueue(operation: op)
                 }
 
-                self.logger.log(.rx, "Received & saved message [\(messageId.prefix(8))] from \(peerId): \"\(receivedMessage.content)\"")
+                if receivedMessage.type == .sos {
+                    self.logger.log(.rx, "EMERGENCY SOS RECEIVED from \(peerId): \"\(receivedMessage.content)\" [\(messageId.prefix(8))]")
+                    NotificationCenter.default.post(name: TransportManager.didUpdateSOSNotification, object: receivedMessage)
+                } else {
+                    self.logger.log(.rx, "Received & saved message [\(messageId.prefix(8))] from \(peerId): \"\(receivedMessage.content)\"")
+                }
                 NotificationCenter.default.post(name: TransportManager.didUpdateMessagesNotification, object: nil)
 
                 // Transmit ACK back to sender
@@ -259,6 +267,12 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate {
                 // Only receiving a verified ACK transitions message status to DELIVERED
                 self.messageRepository.updateStatus(id: ack.acknowledgedPacketId, status: .delivered)
                 self.operationRepository.markStatus(operationId: ack.acknowledgedPacketId, status: .peerRelayed)
+
+                // If acknowledged message was an SOS, broadcast SOS notification
+                if let ackedMsg = self.messageRepository.getMessage(id: ack.acknowledgedPacketId), ackedMsg.type == .sos {
+                    self.logger.log(.ack, "Emergency SOS [\(ack.acknowledgedPacketId.prefix(8))] confirmed delivered to recipient!")
+                    NotificationCenter.default.post(name: TransportManager.didUpdateSOSNotification, object: ackedMsg)
+                }
 
                 NotificationCenter.default.post(name: TransportManager.didUpdateMessagesNotification, object: nil)
 

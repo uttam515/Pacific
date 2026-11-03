@@ -39,6 +39,55 @@ public struct HomeDashboardView: View {
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(16)
 
+                    // Active Emergency Alerts Banner
+                    if !viewModel.recentAlerts.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Label("ACTIVE EMERGENCY BEACONS (\(viewModel.recentAlerts.count))", systemImage: "exclamationmark.octagon.fill")
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.red)
+                                Spacer()
+                                NavigationLink(destination: SOSView()) {
+                                    Text("View All")
+                                        .font(.caption.bold())
+                                        .foregroundColor(.red)
+                                }
+                            }
+
+                            ForEach(viewModel.recentAlerts.prefix(3)) { alert in
+                                NavigationLink(destination: SOSView()) {
+                                    HStack(spacing: 12) {
+                                        Circle()
+                                            .fill(Color.red)
+                                            .frame(width: 10, height: 10)
+
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(alert.content)
+                                                .font(.subheadline.bold())
+                                                .foregroundColor(.primary)
+                                                .lineLimit(2)
+                                            Text("From: \(alert.senderName) • \(alert.timestamp.formatted(date: .omitted, time: .shortened))")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding()
+                                    .background(Color.red.opacity(0.1))
+                                    .cornerRadius(10)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+
                     // Quick Actions
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Emergency Protocol")

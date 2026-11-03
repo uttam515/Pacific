@@ -9,7 +9,7 @@ let meshTests = MeshProtocolTests()
 let meshPassed = meshTests.runAllTests()
 
 if persistencePassed && meshPassed {
-    print("ALL TESTS PASSED SUCCESSFULLY! (10/10)")
+    print("ALL TESTS PASSED SUCCESSFULLY! (15/15)")
     exit(0)
 } else {
     print("TEST SUITE FAILED!")

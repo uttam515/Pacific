@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 
 @MainActor
 public final class SOSViewModel: ObservableObject {
@@ -7,6 +8,9 @@ public final class SOSViewModel: ObservableObject {
     @Published public var selectedEmergencyType: String = "Medical Emergency"
     @Published public var isBroadcasting: Bool = false
     @Published public var broadcastSuccessMessage: String?
+    @Published public var outgoingStatus: MessageDeliveryStatus?
+    @Published public var activeAlerts: [OFFGRIDMessage] = []
+    @Published public var mySentSOS: [OFFGRIDMessage] = []
 
     public let emergencyTypes = [
         "Medical Emergency",
@@ -19,6 +23,8 @@ public final class SOSViewModel: ObservableObject {
     private let messageRepository: MessageRepository
     private let operationRepository: OperationQueueRepository
     private var transportManager: TransportManager?
+    private var cancellables = Set<AnyCancellable>()
+    private var lastOutgoingMessageId: String?
 
     public init(
         messageRepository: MessageRepository = MessageRepository(),
@@ -26,10 +32,65 @@ public final class SOSViewModel: ObservableObject {
     ) {
         self.messageRepository = messageRepository
         self.operationRepository = operationRepository
+        loadSOSData()
+        setupNotificationObservers()
+    }
+
+    private func setupNotificationObservers() {
+        NotificationCenter.default.publisher(for: TransportManager.didUpdateSOSNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.loadSOSData()
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: TransportManager.didUpdateMessagesNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.loadSOSData()
+            }
+            .store(in: &cancellables)
     }
 
     public func configureTransport(_ transport: TransportManager) {
         self.transportManager = transport
+    }
+
+    public func loadSOSData() {
+        let nodeId = KeychainHelper.shared.getOrCreateNodeId()
+        let allMessages = messageRepository.getMessages()
+        let sosMessages = allMessages.filter { $0.type == .sos }
+
+        self.activeAlerts = sosMessages.filter { $0.senderId != nodeId }
+            .sorted(by: { $0.timestamp > $1.timestamp })
+        self.mySentSOS = sosMessages.filter { $0.senderId == nodeId }
+            .sorted(by: { $0.timestamp > $1.timestamp })
+
+        // Refresh outgoing status if tracking a recent beacon
+        if let lastId = lastOutgoingMessageId,
+           let updated = messageRepository.getMessage(id: lastId) {
+            self.outgoingStatus = updated.status
+            updateStatusMessage(for: updated.status)
+        }
+    }
+
+    private func updateStatusMessage(for status: MessageDeliveryStatus) {
+        switch status {
+        case .localOnly:
+            self.broadcastSuccessMessage = "Beacon saved to SQLite locally. Awaiting radio dispatch..."
+        case .queued:
+            self.broadcastSuccessMessage = "No peers connected. Beacon queued in SQLite — will transmit immediately upon connection."
+        case .relayed:
+            self.broadcastSuccessMessage = "Relayed onto local mesh radio hop. Waiting for peer delivery acknowledgment..."
+        case .delivered:
+            self.broadcastSuccessMessage = "Delivery Confirmed: Acknowledged by nearby mesh peer!"
+        case .synced:
+            self.broadcastSuccessMessage = "Synchronized with emergency gateway."
+        case .failed:
+            self.broadcastSuccessMessage = "Transmission failed. Tap retry to re-broadcast."
+        default:
+            break
+        }
     }
 
     public func broadcastSOS() {
@@ -37,6 +98,7 @@ public final class SOSViewModel: ObservableObject {
         let content = "[\(selectedEmergencyType.uppercased())] \(emergencyDetails.isEmpty ? "Assistance requested immediately." : emergencyDetails)"
         let messageId = UUID().uuidString
         let operationId = UUID().uuidString
+        self.lastOutgoingMessageId = messageId
 
         let sosMessage = OFFGRIDMessage(
             id: messageId,
@@ -71,13 +133,43 @@ public final class SOSViewModel: ObservableObject {
             try messageRepository.saveMessageWithOperation(message: sosMessage, operation: op)
         } catch {
             print("[SOSViewModel] Failed to persist SOS message: \(error)")
+            self.broadcastSuccessMessage = "Failed to persist SOS locally: \(error.localizedDescription)"
             return
         }
 
-        // 2. High-Priority Transport Broadcast
-        transportManager?.broadcastPersistedMessage(sosMessage, operationId: op.id)
-
         self.isBroadcasting = true
-        self.broadcastSuccessMessage = "Emergency beacon saved to SQLite and broadcast to mesh peers!"
+        self.outgoingStatus = .localOnly
+        self.broadcastSuccessMessage = "Beacon saved to SQLite locally. Dispatching to radio transport..."
+
+        // 2. High-Priority Transport Broadcast
+        if let transport = transportManager {
+            let sent = transport.broadcastPersistedMessage(sosMessage, operationId: op.id)
+            if sent {
+                self.outgoingStatus = .relayed
+                self.broadcastSuccessMessage = "Relayed onto local mesh radio hop. Waiting for peer delivery acknowledgment..."
+            } else {
+                self.outgoingStatus = .queued
+                self.broadcastSuccessMessage = "No peers connected. Beacon queued in SQLite — will transmit immediately upon connection."
+            }
+        } else {
+            self.outgoingStatus = .queued
+            self.broadcastSuccessMessage = "Transport inactive. Beacon queued locally in SQLite."
+        }
+
+        loadSOSData()
+    }
+
+    public func retryBroadcast(for messageId: String) {
+        guard let message = messageRepository.getMessage(id: messageId) else { return }
+        let pendingOps = operationRepository.getPendingOperations()
+        guard let op = pendingOps.first(where: { $0.entityId == messageId }) else {
+            transportManager?.broadcastPersistedMessage(message, operationId: UUID().uuidString)
+            loadSOSData()
+            return
+        }
+
+        operationRepository.incrementRetry(operationId: op.id)
+        transportManager?.broadcastPersistedMessage(message, operationId: op.id)
+        loadSOSData()
     }
 }
