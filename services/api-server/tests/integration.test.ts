@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdtempSync, statSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { WebSocket } from "ws";
 import { pool, migrate, provision } from "../src/database.js";
@@ -93,6 +97,70 @@ test("real PostgreSQL and HTTP integration", async (t) => {
         { schemaVersion: 1, nodeId, operations: [operation] },
         headers,
       );
+    await t.test(
+      "private credential file and migration-status CLI",
+      async () => {
+        const directory = mkdtempSync(join(tmpdir(), "offgrid-provision-"));
+        const file = join(directory, "device.json");
+        const id = randomUUID();
+        const cwd = fileURLToPath(new URL("../", import.meta.url));
+        const run = (args: string[]) =>
+          spawnSync(
+            process.execPath,
+            ["--import", "tsx", "src/cli.ts", ...args],
+            {
+              cwd,
+              encoding: "utf8",
+              env: { ...process.env, DATABASE_URL: url },
+            },
+          );
+        try {
+          const first = run([
+            "provision",
+            id,
+            "Private file test",
+            "node",
+            "iOS",
+            "--credential-file",
+            file,
+          ]);
+          assert.equal(first.status, 0, first.stderr);
+          const stored = JSON.parse(readFileSync(file, "utf8"));
+          assert.equal(stored.nodeId, id);
+          assert.equal(statSync(file).mode & 0o777, 0o600);
+          assert.equal(first.stdout.includes(stored.bearerCredential), false);
+          assert.equal(JSON.parse(first.stdout).credentialPrinted, false);
+          const again = run([
+            "provision",
+            id,
+            "Private file test",
+            "node",
+            "iOS",
+            "--credential-file",
+            file,
+          ]);
+          assert.notEqual(again.status, 0);
+          assert.equal(
+            JSON.parse(readFileSync(file, "utf8")).bearerCredential,
+            stored.bearerCredential,
+          );
+          const active = await db.query(
+            "SELECT count(*)::int AS n FROM credentials WHERE node_id=$1 AND NOT revoked",
+            [id],
+          );
+          assert.equal(active.rows[0].n, 1);
+          const status = run(["status"]);
+          assert.equal(status.status, 0, status.stderr);
+          const report = JSON.parse(status.stdout);
+          assert.equal(report.requiredTables, "verified");
+          assert.ok(
+            report.migrations.some((x: any) => x.name === "001_backend.sql"),
+          );
+        } finally {
+          rmSync(directory, { recursive: true, force: true });
+        }
+      },
+    );
     await t.test("migration, auth and node binding", async () => {
       assert.equal((await request("/health", "")).status, 200);
       assert.equal((await request("/sync/pull", "")).status, 401);

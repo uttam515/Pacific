@@ -10,6 +10,8 @@ Pending: physical iPhone integration, a shared reachable LAN/HTTPS deployment, n
 
 The small MVP serializes mutations through one commit_clock row to ensure change-log cursor order follows commit order. This favors correctness over throughput; it is not a scalable mesh backend claim. There is one server process's WebSocket fan-out. Multiple server instances require shared notification fan-out; REST polling still catches database changes.
 
+For macOS, use the dedicated [hosting Mac runbook](backend-macos-setup.md) and `scripts/backend-macos.sh`. It preserves a local database credential file and supports non-printing private node provisioning.
+
 ## Windows PowerShell setup
 
 Prerequisites: Git, Node.js 22 LTS or newer, Docker Desktop running Linux containers. Use the backend feature branch from its PR. Run from repository root; no real credentials belong in source or chat.

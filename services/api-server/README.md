@@ -11,3 +11,5 @@ See [local backend setup](../../docs/backend-local-setup.md) for PostgreSQL, mig
 - `test:integration`: real PostgreSQL plus HTTP/WebSocket, disposable TEST_DATABASE_URL ending `_test` required.
 
 The dashboard action adapter is gated; live snapshot reading and canonical receipt/conflict APIs are separate. This is implemented source under review, not a claim of a deployed URL or physical iPhone acceptance.
+
+macOS hosting: [Mac setup and private provisioning](../../docs/backend-macos-setup.md). CLI `status` verifies recorded migrations/tables. Use `provision ... --credential-file <new-private-file>` to avoid printing the bearer credential.
