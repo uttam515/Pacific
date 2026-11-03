@@ -29,11 +29,12 @@ jobs:
       - name: Verify Workspace Structure
         run: ./scripts/verify-workspace.sh
 
-      - name: Typecheck
-        run: pnpm run typecheck
-
+      # Services consume the shared packages' emitted declarations.
       - name: Build Packages & Services
         run: pnpm run build
+
+      - name: Typecheck
+        run: pnpm run typecheck
 
       - name: Lint
         run: pnpm run lint
