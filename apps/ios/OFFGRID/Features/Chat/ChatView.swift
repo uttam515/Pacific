@@ -16,7 +16,7 @@ public struct ChatView: View {
                             .foregroundColor(.secondary)
                         Text("No Offline Messages")
                             .font(.headline)
-                        Text("Messages are saved to SQLite immediately and broadcast over local mesh.")
+                        Text("Messages are committed to SQLite locally before radio transmission.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -28,7 +28,9 @@ public struct ChatView: View {
                         ScrollView {
                             LazyVStack(spacing: 10) {
                                 ForEach(viewModel.messages) { message in
-                                    MessageBubble(message: message)
+                                    MessageBubble(message: message) {
+                                        viewModel.retryTransmission(for: message.id)
+                                    }
                                 }
                             }
                             .padding()
@@ -64,28 +66,104 @@ public struct ChatView: View {
 
 struct MessageBubble: View {
     let message: OFFGRIDMessage
+    let onRetry: () -> Void
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(message.senderName)
-                        .font(.caption.bold())
-                        .foregroundColor(.accentColor)
-                    Spacer()
-                    Text(message.status.rawValue)
-                        .font(.caption2)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.secondary.opacity(0.2))
-                        .cornerRadius(4)
-                }
-                Text(message.content)
-                    .font(.body)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(message.senderName)
+                    .font(.caption.bold())
+                    .foregroundColor(.accentColor)
+                Spacer()
+                DeliveryStatusBadge(status: message.status, onRetry: onRetry)
             }
-            .padding()
-            .background(Color(.secondarySystemBackground))
-            .cornerRadius(12)
+            Text(message.content)
+                .font(.body)
+
+            Text(message.timestamp.formatted(date: .omitted, time: .shortened))
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+}
+
+struct DeliveryStatusBadge: View {
+    let status: MessageDeliveryStatus
+    let onRetry: () -> Void
+
+    var body: some View {
+        Button(action: {
+            if status == .localOnly || status == .queued || status == .failed {
+                onRetry()
+            }
+        }) {
+            HStack(spacing: 4) {
+                Image(systemName: iconName)
+                    .font(.caption2)
+                Text(label)
+                    .font(.caption2.bold())
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(backgroundColor)
+            .foregroundColor(foregroundColor)
+            .cornerRadius(6)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var label: String {
+        switch status {
+        case .localOnly: return "Local Only"
+        case .queued: return "Queued"
+        case .pending: return "Pending"
+        case .relayed: return "Relayed"
+        case .delivered: return "Delivered"
+        case .synced: return "Synchronized"
+        case .failed: return "Failed (Tap)"
+        case .draft: return "Draft"
+        }
+    }
+
+    private var iconName: String {
+        switch status {
+        case .localOnly: return "internaldrive"
+        case .queued: return "clock.arrow.circlepath"
+        case .pending: return "clock"
+        case .relayed: return "antenna.radiowaves.left.and.right"
+        case .delivered: return "checkmark.circle.fill"
+        case .synced: return "cloud.fill"
+        case .failed: return "exclamationmark.triangle.fill"
+        case .draft: return "pencil"
+        }
+    }
+
+    private var backgroundColor: Color {
+        switch status {
+        case .localOnly: return Color.gray.opacity(0.15)
+        case .queued: return Color.orange.opacity(0.15)
+        case .pending: return Color.orange.opacity(0.15)
+        case .relayed: return Color.blue.opacity(0.15)
+        case .delivered: return Color.green.opacity(0.15)
+        case .synced: return Color.purple.opacity(0.15)
+        case .failed: return Color.red.opacity(0.15)
+        case .draft: return Color.secondary.opacity(0.15)
+        }
+    }
+
+    private var foregroundColor: Color {
+        switch status {
+        case .localOnly: return .secondary
+        case .queued: return .orange
+        case .pending: return .orange
+        case .relayed: return .blue
+        case .delivered: return .green
+        case .synced: return .purple
+        case .failed: return .red
+        case .draft: return .secondary
         }
     }
 }

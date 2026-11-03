@@ -2,6 +2,8 @@ import Foundation
 
 public enum MessageDeliveryStatus: String, Codable, Sendable {
     case draft = "DRAFT"
+    case localOnly = "LOCAL_ONLY"
+    case queued = "QUEUED"
     case pending = "PENDING"
     case relayed = "RELAYED"
     case delivered = "DELIVERED"
@@ -35,7 +37,7 @@ public struct OFFGRIDMessage: Codable, Identifiable, Sendable, Equatable {
         content: String,
         type: MessageType = .chat,
         timestamp: Date = Date(),
-        status: MessageDeliveryStatus = .pending,
+        status: MessageDeliveryStatus = .localOnly,
         hopCount: Int = 0,
         lamportClock: Int64 = 0
     ) {

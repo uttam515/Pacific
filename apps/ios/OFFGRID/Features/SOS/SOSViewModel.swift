@@ -35,36 +35,49 @@ public final class SOSViewModel: ObservableObject {
     public func broadcastSOS() {
         let nodeId = KeychainHelper.shared.getOrCreateNodeId()
         let content = "[\(selectedEmergencyType.uppercased())] \(emergencyDetails.isEmpty ? "Assistance requested immediately." : emergencyDetails)"
+        let messageId = UUID().uuidString
+        let operationId = UUID().uuidString
 
         let sosMessage = OFFGRIDMessage(
+            id: messageId,
             senderId: nodeId,
             senderName: "SOS-NODE-\(String(nodeId.prefix(4)))",
             recipientId: "*",
             content: content,
             type: .sos,
-            status: .pending
+            timestamp: Date(),
+            status: .localOnly
         )
 
-        // 1. Save to SQLite
-        messageRepository.saveMessage(sosMessage)
-
-        // 2. Add to Operation Queue
-        if let json = try? JSONEncoder().encode(sosMessage), let jsonString = String(data: json, encoding: .utf8) {
-            let op = OFFGRIDOperation(
-                entityType: .sos,
-                entityId: sosMessage.id,
-                action: .create,
-                originNodeId: nodeId,
-                payloadJson: jsonString,
-                syncStatus: .localOnly
-            )
-            operationRepository.enqueue(operation: op)
+        guard let json = try? JSONEncoder().encode(sosMessage),
+              let jsonString = String(data: json, encoding: .utf8) else {
+            return
         }
 
-        // 3. High-Priority Transport Broadcast
-        transportManager?.broadcastMessage(sosMessage)
+        let op = OFFGRIDOperation(
+            id: operationId,
+            entityType: .sos,
+            entityId: sosMessage.id,
+            action: .create,
+            originNodeId: nodeId,
+            timestamp: Date(),
+            lamportClock: sosMessage.lamportClock,
+            payloadJson: jsonString,
+            syncStatus: .localOnly
+        )
+
+        // 1. Atomically persist message & operation to SQLite
+        do {
+            try messageRepository.saveMessageWithOperation(message: sosMessage, operation: op)
+        } catch {
+            print("[SOSViewModel] Failed to persist SOS message: \(error)")
+            return
+        }
+
+        // 2. High-Priority Transport Broadcast
+        transportManager?.broadcastPersistedMessage(sosMessage, operationId: op.id)
 
         self.isBroadcasting = true
-        self.broadcastSuccessMessage = "Emergency beacon broadcasted to all nearby mesh peers!"
+        self.broadcastSuccessMessage = "Emergency beacon saved to SQLite and broadcast to mesh peers!"
     }
 }

@@ -1,72 +1,73 @@
 // !$*UTF8*$!
 {
 	archiveVersion = 1;
-	classes = {};
+	classes = {
+	};
 	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		E7269179DDF2054C9B75F3F7 /* OFFGRIDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F172F54D1623EAC96196CC89 /* OFFGRIDApp.swift */; };
-		7B09AA48F7AF4DD1B0DE3767 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B83C87BBBC4D8DABD317DBF /* ContentView.swift */; };
-		CC4D0644F763D7E56C0915B6 /* HomeDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D960E5323CAD17647C9F12D /* HomeDashboardView.swift */; };
-		E07990684C81258A98060318 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E45E7566EE42FBDB10F08E15 /* HomeViewModel.swift */; };
-		2DBB350BBB23E1B7B15AADE8 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AE1DE46628A7BBFA2D3D9FC /* ChatView.swift */; };
-		17BCEFDD7F46D8883323FC5B /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6329841ABBF95E9ADC57841 /* ChatViewModel.swift */; };
-		E9605CE2E09F7E12CF92CE04 /* SOSView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29CC75E6A81CEF4D33A6A3CE /* SOSView.swift */; };
-		34B90B0B4FE8FCE83DF984C3 /* SOSViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BB9EE23302C290A324079F1 /* SOSViewModel.swift */; };
-		CEC22C53E8AFC4CDBDE72D6C /* FilesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE72009CEE54F9343532FB69 /* FilesView.swift */; };
-		DFB8FC2C2FE000756653971E /* NetworkStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E24A434A33FF4A5C8CB04CDB /* NetworkStatusView.swift */; };
-		80CDD2E5C33D85828BDACFA7 /* NetworkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B603079B5BA465321D181BC7 /* NetworkViewModel.swift */; };
-		D412B37FF90ADB75A3CA63F5 /* SyncHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 844F51771A6F013757532A93 /* SyncHistoryView.swift */; };
-		426A72BBF2ED13FF09B1F868 /* SyncViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7F963713D55E5E232A28BF /* SyncViewModel.swift */; };
-		D7B337EB552E3D85FEF2B166 /* SQLiteDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3668B8B3B44C85355843029 /* SQLiteDatabase.swift */; };
-		7D6ADDE4F5C352D693859A02 /* NodeIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C5AAA65D4942DA2E59CB1C9 /* NodeIdentity.swift */; };
-		83090BA34C005D753903F3DB /* OFFGRIDMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F0CB9661A6326083C757D44 /* OFFGRIDMessage.swift */; };
-		AB19F09C72C2B3AC0F98E681 /* OFFGRIDOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A452067E4953678E9DD7D1DE /* OFFGRIDOperation.swift */; };
-		5AE36FD064A97809E9236F3D /* MessageRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CF58E55098C631FF893F211 /* MessageRepository.swift */; };
-		E9ADD7048EBE6F0574D17D40 /* OperationQueueRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE61BF346FE133DBFBC418B /* OperationQueueRepository.swift */; };
-		33AB821C4B3153D909AB2348 /* PeerDiscoveryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAF0443E4288837FA26923C8 /* PeerDiscoveryProtocol.swift */; };
-		7E988A30BB03DD8C836E7549 /* MultipeerSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B532D35C3C6F6758DB8CA38 /* MultipeerSessionManager.swift */; };
-		0B099A0ECD662A4B58B5BE61 /* BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3BA2F05FCF2A8CC0F5F63CF /* BLEManager.swift */; };
-		B2F0E08EA75784D0D28231D3 /* TransportManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4248751432B90BABFE36A0A /* TransportManager.swift */; };
-		994775350B3B6DD92F93F460 /* RelayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97D51BB0B68DFEA8FC0DE81D /* RelayManager.swift */; };
-		9490F3E460C785BA14AF7C3B /* SyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41160E6A1E3B1B15E1014A6 /* SyncEngine.swift */; };
-		C26E3BCF8D9A2FC7799CDE18 /* PacketModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC6BD1C77E169C0A722E4D11 /* PacketModels.swift */; };
-		09404D0272B669FEC3892E7D /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0699CA51ED6D595EEDF5FDB1 /* KeychainHelper.swift */; };
-		33F307FDC8CC0DD5142A6F6E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB50414DD546CCBA7BE40984 /* Assets.xcassets */; };
+		09404D0272B669FEC3892E7D /* Security/KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0699CA51ED6D595EEDF5FDB1 /* Security/KeychainHelper.swift */; };
+		0B099A0ECD662A4B58B5BE61 /* Networking/Bluetooth/BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3BA2F05FCF2A8CC0F5F63CF /* Networking/Bluetooth/BLEManager.swift */; };
+		17BCEFDD7F46D8883323FC5B /* Features/Chat/ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6329841ABBF95E9ADC57841 /* Features/Chat/ChatViewModel.swift */; };
+		2DBB350BBB23E1B7B15AADE8 /* Features/Chat/ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AE1DE46628A7BBFA2D3D9FC /* Features/Chat/ChatView.swift */; };
+		33AB821C4B3153D909AB2348 /* Networking/Discovery/PeerDiscoveryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAF0443E4288837FA26923C8 /* Networking/Discovery/PeerDiscoveryProtocol.swift */; };
+		33F307FDC8CC0DD5142A6F6E /* Resources/Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB50414DD546CCBA7BE40984 /* Resources/Assets.xcassets */; };
+		34B90B0B4FE8FCE83DF984C3 /* Features/SOS/SOSViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BB9EE23302C290A324079F1 /* Features/SOS/SOSViewModel.swift */; };
+		426A72BBF2ED13FF09B1F868 /* Features/Sync/SyncViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7F963713D55E5E232A28BF /* Features/Sync/SyncViewModel.swift */; };
+		5AE36FD064A97809E9236F3D /* Data/Repositories/MessageRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CF58E55098C631FF893F211 /* Data/Repositories/MessageRepository.swift */; };
+		7B09AA48F7AF4DD1B0DE3767 /* App/ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B83C87BBBC4D8DABD317DBF /* App/ContentView.swift */; };
+		7D6ADDE4F5C352D693859A02 /* Data/Models/NodeIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C5AAA65D4942DA2E59CB1C9 /* Data/Models/NodeIdentity.swift */; };
+		7E988A30BB03DD8C836E7549 /* Networking/Multipeer/MultipeerSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B532D35C3C6F6758DB8CA38 /* Networking/Multipeer/MultipeerSessionManager.swift */; };
+		80CDD2E5C33D85828BDACFA7 /* Features/Network/NetworkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B603079B5BA465321D181BC7 /* Features/Network/NetworkViewModel.swift */; };
+		83090BA34C005D753903F3DB /* Data/Models/OFFGRIDMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F0CB9661A6326083C757D44 /* Data/Models/OFFGRIDMessage.swift */; };
+		9490F3E460C785BA14AF7C3B /* Sync/SyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41160E6A1E3B1B15E1014A6 /* Sync/SyncEngine.swift */; };
+		994775350B3B6DD92F93F460 /* Networking/Relay/RelayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97D51BB0B68DFEA8FC0DE81D /* Networking/Relay/RelayManager.swift */; };
+		AB19F09C72C2B3AC0F98E681 /* Data/Models/OFFGRIDOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A452067E4953678E9DD7D1DE /* Data/Models/OFFGRIDOperation.swift */; };
+		B2F0E08EA75784D0D28231D3 /* Networking/Transport/TransportManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4248751432B90BABFE36A0A /* Networking/Transport/TransportManager.swift */; };
+		C26E3BCF8D9A2FC7799CDE18 /* Protocol/PacketModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC6BD1C77E169C0A722E4D11 /* Protocol/PacketModels.swift */; };
+		CC4D0644F763D7E56C0915B6 /* Features/Home/HomeDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D960E5323CAD17647C9F12D /* Features/Home/HomeDashboardView.swift */; };
+		CEC22C53E8AFC4CDBDE72D6C /* Features/Files/FilesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE72009CEE54F9343532FB69 /* Features/Files/FilesView.swift */; };
+		D412B37FF90ADB75A3CA63F5 /* Features/Sync/SyncHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 844F51771A6F013757532A93 /* Features/Sync/SyncHistoryView.swift */; };
+		D7B337EB552E3D85FEF2B166 /* Data/Database/SQLiteDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3668B8B3B44C85355843029 /* Data/Database/SQLiteDatabase.swift */; };
+		DFB8FC2C2FE000756653971E /* Features/Network/NetworkStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E24A434A33FF4A5C8CB04CDB /* Features/Network/NetworkStatusView.swift */; };
+		E07990684C81258A98060318 /* Features/Home/HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E45E7566EE42FBDB10F08E15 /* Features/Home/HomeViewModel.swift */; };
+		E7269179DDF2054C9B75F3F7 /* App/OFFGRIDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F172F54D1623EAC96196CC89 /* App/OFFGRIDApp.swift */; };
+		E9605CE2E09F7E12CF92CE04 /* Features/SOS/SOSView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29CC75E6A81CEF4D33A6A3CE /* Features/SOS/SOSView.swift */; };
+		E9ADD7048EBE6F0574D17D40 /* Data/Repositories/OperationQueueRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE61BF346FE133DBFBC418B /* Data/Repositories/OperationQueueRepository.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0699CA51ED6D595EEDF5FDB1 /* Security/KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Security/KeychainHelper.swift; sourceTree = "<group>"; };
 		0EC370BB99D29E799EB4C68C /* OFFGRID.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OFFGRID.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		F172F54D1623EAC96196CC89 /* OFFGRIDApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/OFFGRIDApp.swift"; sourceTree = "<group>"; };
-		1B83C87BBBC4D8DABD317DBF /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/ContentView.swift"; sourceTree = "<group>"; };
-		9D960E5323CAD17647C9F12D /* HomeDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/Home/HomeDashboardView.swift"; sourceTree = "<group>"; };
-		E45E7566EE42FBDB10F08E15 /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/Home/HomeViewModel.swift"; sourceTree = "<group>"; };
-		8AE1DE46628A7BBFA2D3D9FC /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/Chat/ChatView.swift"; sourceTree = "<group>"; };
-		F6329841ABBF95E9ADC57841 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/Chat/ChatViewModel.swift"; sourceTree = "<group>"; };
-		29CC75E6A81CEF4D33A6A3CE /* SOSView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/SOS/SOSView.swift"; sourceTree = "<group>"; };
-		3BB9EE23302C290A324079F1 /* SOSViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/SOS/SOSViewModel.swift"; sourceTree = "<group>"; };
-		FE72009CEE54F9343532FB69 /* FilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/Files/FilesView.swift"; sourceTree = "<group>"; };
-		E24A434A33FF4A5C8CB04CDB /* NetworkStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/Network/NetworkStatusView.swift"; sourceTree = "<group>"; };
-		B603079B5BA465321D181BC7 /* NetworkViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/Network/NetworkViewModel.swift"; sourceTree = "<group>"; };
-		844F51771A6F013757532A93 /* SyncHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/Sync/SyncHistoryView.swift"; sourceTree = "<group>"; };
-		AB7F963713D55E5E232A28BF /* SyncViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/Sync/SyncViewModel.swift"; sourceTree = "<group>"; };
-		E3668B8B3B44C85355843029 /* SQLiteDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data/Database/SQLiteDatabase.swift"; sourceTree = "<group>"; };
-		7C5AAA65D4942DA2E59CB1C9 /* NodeIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data/Models/NodeIdentity.swift"; sourceTree = "<group>"; };
-		7F0CB9661A6326083C757D44 /* OFFGRIDMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data/Models/OFFGRIDMessage.swift"; sourceTree = "<group>"; };
-		A452067E4953678E9DD7D1DE /* OFFGRIDOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data/Models/OFFGRIDOperation.swift"; sourceTree = "<group>"; };
-		9CF58E55098C631FF893F211 /* MessageRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data/Repositories/MessageRepository.swift"; sourceTree = "<group>"; };
-		5BE61BF346FE133DBFBC418B /* OperationQueueRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data/Repositories/OperationQueueRepository.swift"; sourceTree = "<group>"; };
-		EAF0443E4288837FA26923C8 /* PeerDiscoveryProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Networking/Discovery/PeerDiscoveryProtocol.swift"; sourceTree = "<group>"; };
-		2B532D35C3C6F6758DB8CA38 /* MultipeerSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Networking/Multipeer/MultipeerSessionManager.swift"; sourceTree = "<group>"; };
-		F3BA2F05FCF2A8CC0F5F63CF /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Networking/Bluetooth/BLEManager.swift"; sourceTree = "<group>"; };
-		C4248751432B90BABFE36A0A /* TransportManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Networking/Transport/TransportManager.swift"; sourceTree = "<group>"; };
-		97D51BB0B68DFEA8FC0DE81D /* RelayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Networking/Relay/RelayManager.swift"; sourceTree = "<group>"; };
-		F41160E6A1E3B1B15E1014A6 /* SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sync/SyncEngine.swift"; sourceTree = "<group>"; };
-		FC6BD1C77E169C0A722E4D11 /* PacketModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Protocol/PacketModels.swift"; sourceTree = "<group>"; };
-		0699CA51ED6D595EEDF5FDB1 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Security/KeychainHelper.swift"; sourceTree = "<group>"; };
-		AB50414DD546CCBA7BE40984 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Resources/Assets.xcassets"; sourceTree = "<group>"; };
-		E2DAEB0125AFE787A6B01E78 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Resources/Info.plist"; sourceTree = "<group>"; };
+		1B83C87BBBC4D8DABD317DBF /* App/ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/ContentView.swift; sourceTree = "<group>"; };
+		29CC75E6A81CEF4D33A6A3CE /* Features/SOS/SOSView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/SOS/SOSView.swift; sourceTree = "<group>"; };
+		2B532D35C3C6F6758DB8CA38 /* Networking/Multipeer/MultipeerSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Multipeer/MultipeerSessionManager.swift; sourceTree = "<group>"; };
+		3BB9EE23302C290A324079F1 /* Features/SOS/SOSViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/SOS/SOSViewModel.swift; sourceTree = "<group>"; };
+		5BE61BF346FE133DBFBC418B /* Data/Repositories/OperationQueueRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Repositories/OperationQueueRepository.swift; sourceTree = "<group>"; };
+		7C5AAA65D4942DA2E59CB1C9 /* Data/Models/NodeIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Models/NodeIdentity.swift; sourceTree = "<group>"; };
+		7F0CB9661A6326083C757D44 /* Data/Models/OFFGRIDMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Models/OFFGRIDMessage.swift; sourceTree = "<group>"; };
+		844F51771A6F013757532A93 /* Features/Sync/SyncHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Sync/SyncHistoryView.swift; sourceTree = "<group>"; };
+		8AE1DE46628A7BBFA2D3D9FC /* Features/Chat/ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Chat/ChatView.swift; sourceTree = "<group>"; };
+		97D51BB0B68DFEA8FC0DE81D /* Networking/Relay/RelayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Relay/RelayManager.swift; sourceTree = "<group>"; };
+		9CF58E55098C631FF893F211 /* Data/Repositories/MessageRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Repositories/MessageRepository.swift; sourceTree = "<group>"; };
+		9D960E5323CAD17647C9F12D /* Features/Home/HomeDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Home/HomeDashboardView.swift; sourceTree = "<group>"; };
+		A452067E4953678E9DD7D1DE /* Data/Models/OFFGRIDOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Models/OFFGRIDOperation.swift; sourceTree = "<group>"; };
+		AB50414DD546CCBA7BE40984 /* Resources/Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Resources/Assets.xcassets; sourceTree = "<group>"; };
+		AB7F963713D55E5E232A28BF /* Features/Sync/SyncViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Sync/SyncViewModel.swift; sourceTree = "<group>"; };
+		B603079B5BA465321D181BC7 /* Features/Network/NetworkViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Network/NetworkViewModel.swift; sourceTree = "<group>"; };
+		C4248751432B90BABFE36A0A /* Networking/Transport/TransportManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Transport/TransportManager.swift; sourceTree = "<group>"; };
+		E24A434A33FF4A5C8CB04CDB /* Features/Network/NetworkStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Network/NetworkStatusView.swift; sourceTree = "<group>"; };
+		E2DAEB0125AFE787A6B01E78 /* Resources/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Resources/Info.plist; sourceTree = "<group>"; };
+		E3668B8B3B44C85355843029 /* Data/Database/SQLiteDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Database/SQLiteDatabase.swift; sourceTree = "<group>"; };
+		E45E7566EE42FBDB10F08E15 /* Features/Home/HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Home/HomeViewModel.swift; sourceTree = "<group>"; };
+		EAF0443E4288837FA26923C8 /* Networking/Discovery/PeerDiscoveryProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Discovery/PeerDiscoveryProtocol.swift; sourceTree = "<group>"; };
+		F172F54D1623EAC96196CC89 /* App/OFFGRIDApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/OFFGRIDApp.swift; sourceTree = "<group>"; };
+		F3BA2F05FCF2A8CC0F5F63CF /* Networking/Bluetooth/BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Bluetooth/BLEManager.swift; sourceTree = "<group>"; };
+		F41160E6A1E3B1B15E1014A6 /* Sync/SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sync/SyncEngine.swift; sourceTree = "<group>"; };
+		F6329841ABBF95E9ADC57841 /* Features/Chat/ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Chat/ChatViewModel.swift; sourceTree = "<group>"; };
+		FC6BD1C77E169C0A722E4D11 /* Protocol/PacketModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocol/PacketModels.swift; sourceTree = "<group>"; };
+		FE72009CEE54F9343532FB69 /* Features/Files/FilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Files/FilesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,12 +81,40 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		B9B8DBC97B2054281802674F = {
+		085492D073420B2CA1C3230D /* OFFGRID */ = {
 			isa = PBXGroup;
 			children = (
-				085492D073420B2CA1C3230D /* OFFGRID */,
-				5C3301D8292DBACEA69EE035 /* Products */,
+				F172F54D1623EAC96196CC89 /* App/OFFGRIDApp.swift */,
+				1B83C87BBBC4D8DABD317DBF /* App/ContentView.swift */,
+				9D960E5323CAD17647C9F12D /* Features/Home/HomeDashboardView.swift */,
+				E45E7566EE42FBDB10F08E15 /* Features/Home/HomeViewModel.swift */,
+				8AE1DE46628A7BBFA2D3D9FC /* Features/Chat/ChatView.swift */,
+				F6329841ABBF95E9ADC57841 /* Features/Chat/ChatViewModel.swift */,
+				29CC75E6A81CEF4D33A6A3CE /* Features/SOS/SOSView.swift */,
+				3BB9EE23302C290A324079F1 /* Features/SOS/SOSViewModel.swift */,
+				FE72009CEE54F9343532FB69 /* Features/Files/FilesView.swift */,
+				E24A434A33FF4A5C8CB04CDB /* Features/Network/NetworkStatusView.swift */,
+				B603079B5BA465321D181BC7 /* Features/Network/NetworkViewModel.swift */,
+				844F51771A6F013757532A93 /* Features/Sync/SyncHistoryView.swift */,
+				AB7F963713D55E5E232A28BF /* Features/Sync/SyncViewModel.swift */,
+				E3668B8B3B44C85355843029 /* Data/Database/SQLiteDatabase.swift */,
+				7C5AAA65D4942DA2E59CB1C9 /* Data/Models/NodeIdentity.swift */,
+				7F0CB9661A6326083C757D44 /* Data/Models/OFFGRIDMessage.swift */,
+				A452067E4953678E9DD7D1DE /* Data/Models/OFFGRIDOperation.swift */,
+				9CF58E55098C631FF893F211 /* Data/Repositories/MessageRepository.swift */,
+				5BE61BF346FE133DBFBC418B /* Data/Repositories/OperationQueueRepository.swift */,
+				EAF0443E4288837FA26923C8 /* Networking/Discovery/PeerDiscoveryProtocol.swift */,
+				2B532D35C3C6F6758DB8CA38 /* Networking/Multipeer/MultipeerSessionManager.swift */,
+				F3BA2F05FCF2A8CC0F5F63CF /* Networking/Bluetooth/BLEManager.swift */,
+				C4248751432B90BABFE36A0A /* Networking/Transport/TransportManager.swift */,
+				97D51BB0B68DFEA8FC0DE81D /* Networking/Relay/RelayManager.swift */,
+				F41160E6A1E3B1B15E1014A6 /* Sync/SyncEngine.swift */,
+				FC6BD1C77E169C0A722E4D11 /* Protocol/PacketModels.swift */,
+				0699CA51ED6D595EEDF5FDB1 /* Security/KeychainHelper.swift */,
+				AB50414DD546CCBA7BE40984 /* Resources/Assets.xcassets */,
+				E2DAEB0125AFE787A6B01E78 /* Resources/Info.plist */,
 			);
+			path = OFFGRID;
 			sourceTree = "<group>";
 		};
 		5C3301D8292DBACEA69EE035 /* Products */ = {
@@ -96,40 +125,12 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		085492D073420B2CA1C3230D /* OFFGRID */ = {
+		B9B8DBC97B2054281802674F = {
 			isa = PBXGroup;
 			children = (
-				F172F54D1623EAC96196CC89 /* OFFGRIDApp.swift */,
-				1B83C87BBBC4D8DABD317DBF /* ContentView.swift */,
-				9D960E5323CAD17647C9F12D /* HomeDashboardView.swift */,
-				E45E7566EE42FBDB10F08E15 /* HomeViewModel.swift */,
-				8AE1DE46628A7BBFA2D3D9FC /* ChatView.swift */,
-				F6329841ABBF95E9ADC57841 /* ChatViewModel.swift */,
-				29CC75E6A81CEF4D33A6A3CE /* SOSView.swift */,
-				3BB9EE23302C290A324079F1 /* SOSViewModel.swift */,
-				FE72009CEE54F9343532FB69 /* FilesView.swift */,
-				E24A434A33FF4A5C8CB04CDB /* NetworkStatusView.swift */,
-				B603079B5BA465321D181BC7 /* NetworkViewModel.swift */,
-				844F51771A6F013757532A93 /* SyncHistoryView.swift */,
-				AB7F963713D55E5E232A28BF /* SyncViewModel.swift */,
-				E3668B8B3B44C85355843029 /* SQLiteDatabase.swift */,
-				7C5AAA65D4942DA2E59CB1C9 /* NodeIdentity.swift */,
-				7F0CB9661A6326083C757D44 /* OFFGRIDMessage.swift */,
-				A452067E4953678E9DD7D1DE /* OFFGRIDOperation.swift */,
-				9CF58E55098C631FF893F211 /* MessageRepository.swift */,
-				5BE61BF346FE133DBFBC418B /* OperationQueueRepository.swift */,
-				EAF0443E4288837FA26923C8 /* PeerDiscoveryProtocol.swift */,
-				2B532D35C3C6F6758DB8CA38 /* MultipeerSessionManager.swift */,
-				F3BA2F05FCF2A8CC0F5F63CF /* BLEManager.swift */,
-				C4248751432B90BABFE36A0A /* TransportManager.swift */,
-				97D51BB0B68DFEA8FC0DE81D /* RelayManager.swift */,
-				F41160E6A1E3B1B15E1014A6 /* SyncEngine.swift */,
-				FC6BD1C77E169C0A722E4D11 /* PacketModels.swift */,
-				0699CA51ED6D595EEDF5FDB1 /* KeychainHelper.swift */,
-				AB50414DD546CCBA7BE40984 /* Assets.xcassets */,
-				E2DAEB0125AFE787A6B01E78 /* Info.plist */,
+				085492D073420B2CA1C3230D /* OFFGRID */,
+				5C3301D8292DBACEA69EE035 /* Products */,
 			);
-			path = OFFGRID;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -159,7 +160,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 2620;
 			};
 			buildConfigurationList = 312AEC4A30A709044C1B251A /* Build configuration list for PBXProject "OFFGRID" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -184,7 +185,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				33F307FDC8CC0DD5142A6F6E /* Assets.xcassets in Resources */,
+				33F307FDC8CC0DD5142A6F6E /* Resources/Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -195,66 +196,76 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E7269179DDF2054C9B75F3F7 /* OFFGRIDApp.swift in Sources */,
-				7B09AA48F7AF4DD1B0DE3767 /* ContentView.swift in Sources */,
-				CC4D0644F763D7E56C0915B6 /* HomeDashboardView.swift in Sources */,
-				E07990684C81258A98060318 /* HomeViewModel.swift in Sources */,
-				2DBB350BBB23E1B7B15AADE8 /* ChatView.swift in Sources */,
-				17BCEFDD7F46D8883323FC5B /* ChatViewModel.swift in Sources */,
-				E9605CE2E09F7E12CF92CE04 /* SOSView.swift in Sources */,
-				34B90B0B4FE8FCE83DF984C3 /* SOSViewModel.swift in Sources */,
-				CEC22C53E8AFC4CDBDE72D6C /* FilesView.swift in Sources */,
-				DFB8FC2C2FE000756653971E /* NetworkStatusView.swift in Sources */,
-				80CDD2E5C33D85828BDACFA7 /* NetworkViewModel.swift in Sources */,
-				D412B37FF90ADB75A3CA63F5 /* SyncHistoryView.swift in Sources */,
-				426A72BBF2ED13FF09B1F868 /* SyncViewModel.swift in Sources */,
-				D7B337EB552E3D85FEF2B166 /* SQLiteDatabase.swift in Sources */,
-				7D6ADDE4F5C352D693859A02 /* NodeIdentity.swift in Sources */,
-				83090BA34C005D753903F3DB /* OFFGRIDMessage.swift in Sources */,
-				AB19F09C72C2B3AC0F98E681 /* OFFGRIDOperation.swift in Sources */,
-				5AE36FD064A97809E9236F3D /* MessageRepository.swift in Sources */,
-				E9ADD7048EBE6F0574D17D40 /* OperationQueueRepository.swift in Sources */,
-				33AB821C4B3153D909AB2348 /* PeerDiscoveryProtocol.swift in Sources */,
-				7E988A30BB03DD8C836E7549 /* MultipeerSessionManager.swift in Sources */,
-				0B099A0ECD662A4B58B5BE61 /* BLEManager.swift in Sources */,
-				B2F0E08EA75784D0D28231D3 /* TransportManager.swift in Sources */,
-				994775350B3B6DD92F93F460 /* RelayManager.swift in Sources */,
-				9490F3E460C785BA14AF7C3B /* SyncEngine.swift in Sources */,
-				C26E3BCF8D9A2FC7799CDE18 /* PacketModels.swift in Sources */,
-				09404D0272B669FEC3892E7D /* KeychainHelper.swift in Sources */,
+				E7269179DDF2054C9B75F3F7 /* App/OFFGRIDApp.swift in Sources */,
+				7B09AA48F7AF4DD1B0DE3767 /* App/ContentView.swift in Sources */,
+				CC4D0644F763D7E56C0915B6 /* Features/Home/HomeDashboardView.swift in Sources */,
+				E07990684C81258A98060318 /* Features/Home/HomeViewModel.swift in Sources */,
+				2DBB350BBB23E1B7B15AADE8 /* Features/Chat/ChatView.swift in Sources */,
+				17BCEFDD7F46D8883323FC5B /* Features/Chat/ChatViewModel.swift in Sources */,
+				E9605CE2E09F7E12CF92CE04 /* Features/SOS/SOSView.swift in Sources */,
+				34B90B0B4FE8FCE83DF984C3 /* Features/SOS/SOSViewModel.swift in Sources */,
+				CEC22C53E8AFC4CDBDE72D6C /* Features/Files/FilesView.swift in Sources */,
+				DFB8FC2C2FE000756653971E /* Features/Network/NetworkStatusView.swift in Sources */,
+				80CDD2E5C33D85828BDACFA7 /* Features/Network/NetworkViewModel.swift in Sources */,
+				D412B37FF90ADB75A3CA63F5 /* Features/Sync/SyncHistoryView.swift in Sources */,
+				426A72BBF2ED13FF09B1F868 /* Features/Sync/SyncViewModel.swift in Sources */,
+				D7B337EB552E3D85FEF2B166 /* Data/Database/SQLiteDatabase.swift in Sources */,
+				7D6ADDE4F5C352D693859A02 /* Data/Models/NodeIdentity.swift in Sources */,
+				83090BA34C005D753903F3DB /* Data/Models/OFFGRIDMessage.swift in Sources */,
+				AB19F09C72C2B3AC0F98E681 /* Data/Models/OFFGRIDOperation.swift in Sources */,
+				5AE36FD064A97809E9236F3D /* Data/Repositories/MessageRepository.swift in Sources */,
+				E9ADD7048EBE6F0574D17D40 /* Data/Repositories/OperationQueueRepository.swift in Sources */,
+				33AB821C4B3153D909AB2348 /* Networking/Discovery/PeerDiscoveryProtocol.swift in Sources */,
+				7E988A30BB03DD8C836E7549 /* Networking/Multipeer/MultipeerSessionManager.swift in Sources */,
+				0B099A0ECD662A4B58B5BE61 /* Networking/Bluetooth/BLEManager.swift in Sources */,
+				B2F0E08EA75784D0D28231D3 /* Networking/Transport/TransportManager.swift in Sources */,
+				994775350B3B6DD92F93F460 /* Networking/Relay/RelayManager.swift in Sources */,
+				9490F3E460C785BA14AF7C3B /* Sync/SyncEngine.swift in Sources */,
+				C26E3BCF8D9A2FC7799CDE18 /* Protocol/PacketModels.swift in Sources */,
+				09404D0272B669FEC3892E7D /* Security/KeychainHelper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		B21FEA8B361C5074C004CF32 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ENABLE_MODULES = YES;
-				ENABLE_TESTABILITY = YES;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.0;
-			};
-			name = Debug;
-		};
 		8E292DFB9EE8E9971CDBFCB8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ENABLE_MODULES = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				DEVELOPMENT_TEAM = J2753Y8989;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -262,37 +273,21 @@
 			};
 			name = Release;
 		};
-		BF4B2DC1233899DE8D2EC672 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = OFFGRID/Resources/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = org.offgrid.mesh;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
 		9CE39D1FA58E3422FA9594AD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OFFGRID/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.offgrid.mesh;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -302,23 +297,95 @@
 			};
 			name = Release;
 		};
+		B21FEA8B361C5074C004CF32 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				DEVELOPMENT_TEAM = J2753Y8989;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		BF4B2DC1233899DE8D2EC672 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = OFFGRID/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.offgrid.mesh;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		312AEC4A30A709044C1B251A /* Build configuration list for PBXProject "OFFGRID" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				B21FEA8B361C5074C004CF32 /* Debug */,
-				8E292DFB9EE8E9971CDBFCB8 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		1BD8AF6241EA4D2BCB89A821 /* Build configuration list for PBXNativeTarget "OFFGRID" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				BF4B2DC1233899DE8D2EC672 /* Debug */,
 				9CE39D1FA58E3422FA9594AD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		312AEC4A30A709044C1B251A /* Build configuration list for PBXProject "OFFGRID" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B21FEA8B361C5074C004CF32 /* Debug */,
+				8E292DFB9EE8E9971CDBFCB8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

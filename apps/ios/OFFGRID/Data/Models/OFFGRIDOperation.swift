@@ -14,9 +14,11 @@ public enum OperationEntity: String, Codable, Sendable {
 
 public enum SyncStatus: String, Codable, Sendable {
     case localOnly = "LOCAL_ONLY"
+    case queued = "QUEUED"
     case peerRelayed = "PEER_RELAYED"
     case gatewaySynced = "GATEWAY_SYNCED"
     case conflict = "CONFLICT"
+    case failed = "FAILED"
 }
 
 public struct OFFGRIDOperation: Codable, Identifiable, Sendable, Equatable {
