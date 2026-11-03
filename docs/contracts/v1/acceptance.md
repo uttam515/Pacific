@@ -35,7 +35,11 @@ Persist a PEER_STORED receipt, then fail a relay attempt. Keep the receipt, loca
 | A → B → C with A unable to reach C directly | Physical relay verification pending; evidence from actual forwarder |
 | ttl=0 packet | May store/deliver locally; no forwarding |
 | Repeated packet / operation | No forwarding loop; no repeated entity effect |
-| Fragmented BLE envelope over negotiated MTU | Reassembly, truncation/reorder/duplicate handling verified by mobile owners |
+| BLE <=2048-byte envelope over fixed 20-byte frames | Golden frames, truncation/reorder/duplicate/timeout/backpressure behavior physically verified by mobile owners |
 | App background/termination | Measure actual behavior; no permanent background-relay claim |
 
 Record device models, OS versions, build SHA, transport, configuration, actual result, operation IDs, and time. Never include real bearer tokens in test reports.
+
+## F. Broadcast, announcement and migration audit
+
+Use audit-decisions.md: broadcast receivers emit no automatic RECIPIENT_ACKNOWLEDGED; peer receipts return unicast to the immediate sender, and ACKs are never rebroadcast or acknowledged recursively. Explicit authorized SOS responder actions yield independent application receipts; no all-peers-delivered state exists. Mobile announcement CREATE/UPDATE fixtures must round-trip through generic persistence/sync without requiring a new editor. For the prototype upgrade, preserve existing outbox operations and node IDs through an explicit one-time marker migration; deletion/restore ambiguity must never silently clone identity or discard data. Fixture score reports expected-valid accepted and expected-invalid rejected separately.

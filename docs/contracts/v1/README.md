@@ -1,6 +1,8 @@
-# OFFGRID contract v1 — 1.0.0-rc.1
+# OFFGRID contract v1 — 1.0.0-rc.2
 
 **Status: REVIEW CANDIDATE. Not frozen; not a running API.** Engineer 1, Engineer 2 (Android), and Engineer 3 (iOS) must review this PR before declaring a freeze. No mobile or backend implementation is changed by this contract PR. The existing dashboard has a compatibility summary, not the complete delivery-evidence UI.
+
+The [iOS audit decisions](audit-decisions.md) are normative for this candidate and resolve BLE framing, broadcast receipts, installation migration, and announcement scope. Where earlier text is less specific, apply those decisions.
 
 ## Authoritative files
 
@@ -10,7 +12,7 @@
 - [Examples](examples.md): transport, operation, acknowledgments, sync, conflicts, and dashboard JSON.
 - [Acceptance scenarios](acceptance.md): tests the implementations must pass before an integration claim.
 
-Wire version is integer `1`: `version` on the transport envelope; `schemaVersion` on operations, acknowledgments, and API documents. `1.0.0-rc.1` identifies this review revision, not an extra JSON field. Unknown properties are rejected. Before adoption, replace the old draft v1 models together on all clients; never silently mix the earlier draft with this candidate. There is no released, frozen v1 to preserve yet. After freeze, breaking changes require a new wire/API major version; pre-freeze candidate edits require fixture and review updates.
+Wire version is integer `1`: `version` on the transport envelope; `schemaVersion` on operations, acknowledgments, and API documents. `1.0.0-rc.2` identifies this review revision, not an extra JSON field. Unknown properties are rejected. Before adoption, replace the old draft v1 models together on all clients; never silently mix the earlier draft with this candidate. There is no released, frozen v1 to preserve yet. After freeze, breaking changes require a new wire/API major version; pre-freeze candidate edits require fixture and review updates.
 
 ## 1. IDs, data, and clocks
 
@@ -24,7 +26,7 @@ All numeric timestamps are UTC epoch milliseconds. Integers are limited to 0..90
 
 ## 2. Transport and delivery evidence
 
-Packet types in this narrow v1 are SYNC_OP and ACK. A SYNC_OP contains the complete Operation; an ACK contains an Acknowledgment. Direct MESSAGE/SOS packet types in the old draft are replaced by Operation.entityType. JSON is UTF-8. Maximum encoded envelope: 65536 bytes; receivers check byte size before parsing. The BLE/IP adapters must fragment and reassemble envelopes before JSON validation; this contract does not claim that a 64 KiB frame fits a BLE write. Fragmentation framing and retry timeouts remain a transport-adapter review gate, not a proven interoperability feature.
+Packet types in this narrow v1 are SYNC_OP and ACK. A SYNC_OP contains the complete Operation; an ACK contains an Acknowledgment. Direct MESSAGE/SOS packet types in the old draft are replaced by Operation.entityType. JSON is UTF-8. Maximum encoded envelope: 65536 bytes; receivers check byte size before parsing. The BLE/IP adapters must fragment and reassemble envelopes before JSON validation; BLE has a separate 2048-byte envelope cap and the fixed frame defined in [audit decisions](audit-decisions.md). This contract does not claim that a 64 KiB frame fits a BLE write. Native implementation and physical framing tests remain a gate, not a proven interoperability feature.
 
 Initial ttl=5, hopCount=0. A forwarder may forward only with ttl>0; persist/deliver locally even at ttl=0, but never forward it further. Before forwarding: ttl-=1; hopCount+=1. Maximum initial budget is 8; ttl+hopCount must remain <=8. TTL limits hops, not elapsed time. A repeated packet is not forwarded again automatically; a repeated durable operation is not applied again. A stored duplicate may trigger a repeat receipt to recover from a lost ACK. Forwarding success requires the chosen transport result; it does not prove backend/recipient delivery.
 
@@ -99,7 +101,7 @@ DashboardSnapshot retains the current schemaVersion and fields for compatibility
 
 ## 6. Installation identity and reinstall
 
-Generate a cryptographically random UUIDv4 on first launch when the installation identity record is absent. Store it in durable app-private storage; use it across normal restarts and app updates. Exclude the installation marker/node identity and bearer credential provisioning from device-to-device migration/backup restoration. If a restored database has no matching non-restored installation marker, generate a new nodeId and require new provisioning. Do not assume uninstall removes Keychain entries: a stale credential alone must never restore an installation identity.
+Generate a cryptographically random UUIDv4 on first launch when the installation identity record is absent. Store it in durable app-private storage; use it across normal restarts and app updates. Exclude the installation marker/node identity and bearer credential provisioning from device-to-device migration/backup restoration. If a restored database has no matching non-restored installation marker, preserve its data and require explicit recovery review. New installations require a new nodeId/provisioning; known prototype upgrades may explicitly adopt the existing ID as detailed in [audit decisions](audit-decisions.md). Do not assume uninstall removes Keychain entries: a stale credential alone must never restore an installation identity.
 
 After deletion/reinstall, loss of identity, cleared application data, or migration to another device: new installation nodeId and credential provisioning; backend retains old audit records under the old nodeId. No promise that unsynchronized data survives app deletion. An offload/update that preserves the marker retains the ID. A node name change never changes the UUID. Locally recovered operations keep original originNodeIds; import/recovery needs an explicit authorized recovery path, not silent reassignment. iOS/Android engineers own the platform-specific exclusion and lifecycle tests; this is the required policy rather than a claim of current implementation.
 

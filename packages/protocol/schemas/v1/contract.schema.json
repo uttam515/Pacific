@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://offgrid.example/contracts/v1/contract.schema.json",
-  "$comment": "Review candidate 1.0.0-rc.1; this identifier is not a hosted service. $defs are the authoritative wire types.",
+  "$comment": "Review candidate 1.0.0-rc.2; this identifier is not a hosted service. $defs are the authoritative wire types.",
   "title": "OFFGRID v1 contract \u2014 review candidate",
   "$defs": {
     "UUID": {
