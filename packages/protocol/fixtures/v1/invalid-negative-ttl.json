@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "packetId": "00000000-0000-4000-8000-000000000030",
+  "sourceNodeId": "00000000-0000-4000-8000-000000000001",
+  "destinationNodeId": "00000000-0000-4000-8000-000000000002",
+  "timestamp": 1793721600000,
+  "ttl": -1,
+  "hopCount": 0,
+  "type": "SYNC_OP",
+  "payload": {
+    "schemaVersion": 1,
+    "operationId": "00000000-0000-4000-8000-000000000020",
+    "originNodeId": "00000000-0000-4000-8000-000000000001",
+    "entityId": "00000000-0000-4000-8000-000000000010",
+    "timestamp": 1793721600000,
+    "lamportClock": 1,
+    "entityType": "MESSAGE",
+    "action": "CREATE",
+    "baseVersion": 0,
+    "payload": {
+      "text": "Offline iPhone integration test",
+      "recipientNodeId": "00000000-0000-4000-8000-000000000002"
+    }
+  }
+}

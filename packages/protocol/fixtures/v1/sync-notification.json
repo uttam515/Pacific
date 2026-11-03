@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "type": "SYNC_NOTIFICATION",
+  "eventId": "00000000-0000-4000-8000-000000000070",
+  "timestamp": 1793721602000,
+  "latestCursor": "c1"
+}

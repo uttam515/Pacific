@@ -7,15 +7,17 @@
     "build": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run build",
     "typecheck": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run typecheck",
     "lint": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run lint",
-    "test": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run test",
-    "clean": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run clean"
+    "test": "pnpm run contract:test && pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run test",
+    "clean": "pnpm -r --filter '!./apps/android' --filter '!./apps/ios' run clean",
+    "contract:test": "node --test scripts/contract.test.mjs"
   },
   "packageManager": "pnpm@12.9.1",
   "engines": {
     "node": ">=20.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "ajv": "^8.17.1"
   },
   "keywords": [
     "offline-first",

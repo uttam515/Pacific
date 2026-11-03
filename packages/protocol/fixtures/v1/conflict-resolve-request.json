@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "operationId": "00000000-0000-4000-8000-000000000024",
+  "resolverNodeId": "00000000-0000-4000-8000-000000000004",
+  "selectedOperationId": "00000000-0000-4000-8000-000000000023",
+  "expectedConflictRevision": 1,
+  "expectedEntityVersion": 2,
+  "timestamp": 1793721604000,
+  "lamportClock": 5
+}
