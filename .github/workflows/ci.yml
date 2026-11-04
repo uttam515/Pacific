@@ -79,13 +79,54 @@ jobs:
       - run: pnpm --filter @offgrid/shared-types build
       - run: pnpm --filter @offgrid/api-server build
       - run: pnpm --filter @offgrid/api-server test:integration
+      - run: pnpm --filter @offgrid/web-dashboard build
+      - run: pnpm --filter @offgrid/web-dashboard exec playwright install --with-deps chromium
+      - name: Browser acceptance against PostgreSQL
+        env:
+          OFFGRID_ACCEPTANCE_CONFIG: ${{ runner.temp }}/offgrid-browser-private.json
+        run: |
+          node services/api-server/scripts/acceptance-host.mjs > /tmp/acceptance-host.log 2>&1 &
+          host_pid=$!
+          trap 'kill "$host_pid"' EXIT
+          for i in $(seq 1 30); do test -f "$OFFGRID_ACCEPTANCE_CONFIG" && break; sleep 1; done
+          pnpm --filter @offgrid/web-dashboard exec playwright test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: emergency-dashboard-acceptance
+          path: apps/web-dashboard/test-results/*.png
+          if-no-files-found: ignore
 
   ios-integration:
     name: iOS simulator build and native regression tests
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Native SQLite, mesh simulation, fixtures, gateway persistence
-        run: bash scripts/test-ios-macos.sh
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 12.9.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @offgrid/shared-types build && pnpm --filter @offgrid/api-server build
+      - name: Start disposable PostgreSQL
+        run: |
+          brew install postgresql@16
+          echo "$(brew --prefix postgresql@16)/bin" >> "$GITHUB_PATH"
+          "$(brew --prefix postgresql@16)/bin/initdb" -D "$RUNNER_TEMP/offgrid-pg" -A trust
+          "$(brew --prefix postgresql@16)/bin/pg_ctl" -D "$RUNNER_TEMP/offgrid-pg" -l "$RUNNER_TEMP/offgrid-pg.log" -o '-p 55432 -h 127.0.0.1' start
+          "$(brew --prefix postgresql@16)/bin/createdb" -h 127.0.0.1 -p 55432 offgrid_test
+      - name: Native SQLite, mesh simulation, fixtures and real HTTP gateway
+        env:
+          TEST_DATABASE_URL: postgresql://runner@127.0.0.1:55432/offgrid_test
+          OFFGRID_ACCEPTANCE_CONFIG: ${{ runner.temp }}/offgrid-native-private.json
+        run: |
+          node services/api-server/scripts/acceptance-host.mjs > /tmp/native-host.log 2>&1 &
+          host_pid=$!
+          trap 'kill "$host_pid"' EXIT
+          for i in $(seq 1 30); do test -f "$OFFGRID_ACCEPTANCE_CONFIG" && break; sleep 1; done
+          bash scripts/test-ios-macos.sh
       - name: iOS Simulator build (no signing)
         run: xcodebuild -project apps/ios/OFFGRID.xcodeproj -scheme OFFGRID -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build

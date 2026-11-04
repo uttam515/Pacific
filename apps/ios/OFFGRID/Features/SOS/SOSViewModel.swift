@@ -139,7 +139,7 @@ public final class SOSViewModel: ObservableObject {
             entityId: sosMessage.id,
             action: .create,
             originNodeId: nodeId,
-            timestamp: Date(),
+            timestamp: sosMessage.timestamp,
             lamportClock: sosMessage.lamportClock,
             payloadJson: jsonString,
             syncStatus: .localOnly
@@ -147,7 +147,9 @@ public final class SOSViewModel: ObservableObject {
 
         // 1. Atomically persist message & operation to SQLite
         do {
-            try messageRepository.saveMessageWithOperation(message: sosMessage, operation: op)
+            let canonical = ContractV1.Operation(operationId:operationId,originNodeId:nodeId,entityId:messageId,timestamp:Int64(sosMessage.timestamp.timeIntervalSince1970*1000),lamportClock:sosMessage.lamportClock,entityType:.sos,action:.create,baseVersion:0,payload:.sos(contractPayload))
+            let envelope = ContractV1.Envelope(packetId:UUID().uuidString.lowercased(),sourceNodeId:nodeId,destinationNodeId:"*",timestamp:canonical.timestamp,ttl:5,hopCount:0,type:.syncOp,payload:.syncOp(canonical))
+            try messageRepository.saveMessageWithOperation(message: sosMessage, operation: op, gatewayEnvelope:envelope)
         } catch {
             print("[SOSViewModel] Failed to persist SOS message: \(error)")
             self.broadcastSuccessMessage = "Failed to persist SOS locally: \(error.localizedDescription)"

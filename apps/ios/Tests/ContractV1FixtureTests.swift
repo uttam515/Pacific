@@ -215,7 +215,7 @@ public final class ContractV1FixtureTests {
         // Step B: Open using SQLiteDatabase, which automatically triggers runMigrations() -> applyMigrationV2()
         let database = SQLiteDatabase(inMemory: false, customPath: testDbPath)
         
-        // Verify user_version is now 2
+        // Verify user_version includes the additive gateway migration
         var upgradedVersion = 0
         if sqlite3_open_v2(testDbPath, &rawDb, SQLITE_OPEN_READONLY, nil) == SQLITE_OK {
             var stmt: OpaquePointer?
@@ -249,8 +249,8 @@ public final class ContractV1FixtureTests {
             sqlite3_finalize(stmt)
             sqlite3_close_v2(rawDb)
             
-            guard upgradedVersion == 2 else {
-                print("  [FAIL] Expected user_version 2, got \(upgradedVersion)")
+            guard upgradedVersion == 3 else {
+                print("  [FAIL] Expected user_version 3, got \(upgradedVersion)")
                 return false
             }
             
@@ -284,7 +284,7 @@ public final class ContractV1FixtureTests {
         }
         
         database.close()
-        print("  [PASS] SQLite v2 migration upgraded version to 2, backfilled operation_id, preserved all queued data")
+        print("  [PASS] SQLite v2/v3 migrations upgraded version to 3, backfilled operation_id, preserved all queued data")
         return true
     }
     

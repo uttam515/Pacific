@@ -109,7 +109,7 @@ public final class MeshEngine: @unchecked Sendable {
             ))
         }
 
-        let contractOp = ContractV1.Operation(
+        var contractOp = ContractV1.Operation(
             schemaVersion: 1,
             operationId: operationId.lowercased(),
             originNodeId: localNodeId,
@@ -122,6 +122,13 @@ public final class MeshEngine: @unchecked Sendable {
             payload: opPayload
         )
 
+        if message.type == .sos {
+            do {
+                if let raw=try database.gatewayRows("SELECT operation_json FROM gateway_upload_queue WHERE operation_id=?",[operationId.lowercased()]).first?.first {
+                    contractOp=try JSONDecoder().decode(ContractV1.Operation.self,from:Data(raw.utf8))
+                }
+            } catch {onDiagnosticLog?(.error,"Stored canonical operation unavailable; retry paused");return false}
+        }
         let envelope = ContractV1.Envelope(
             version: 1,
             packetId: UUID().uuidString.lowercased(),

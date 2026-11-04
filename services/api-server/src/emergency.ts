@@ -47,6 +47,10 @@ export class Emergency {
   if(b.schemaVersion!==1||b.nodeId!==a.node_id||typeof b.meshConnected!=='boolean'||typeof b.internetReachable!=='boolean') return invalid('Invalid heartbeat');
   integer(b.reportedAt,Number.MAX_SAFE_INTEGER);integer(b.pendingUploads);integer(b.failedUploads);
   return this.engine.tx(async c=>{
+   const old=(await c.query('SELECT body,observed_at FROM gateway_health WHERE node_id=$1',[a.node_id])).rows[0];
+   if(!old || Date.now()-Number(old.observed_at)>=45000 || canonical({...old.body,reportedAt:0})!==canonical({...b,reportedAt:0})) {
+     await c.query('INSERT INTO gateway_events VALUES($1,$2,$3,$4,$5,$6)',[randomUUID(),a.group_id,a.node_id,!old?'GATEWAY_FIRST_REPORT':Date.now()-Number(old.observed_at)>=45000?'GATEWAY_RECONNECTED':'GATEWAY_STATE_REPORTED',Date.now(),b]);
+   }
    await c.query('INSERT INTO gateway_health VALUES($1,$2,$3,$4,$5) ON CONFLICT(node_id) DO UPDATE SET observed_at=excluded.observed_at,reported_at=excluded.reported_at,body=excluded.body',[a.node_id,a.group_id,Date.now(),b.reportedAt,b]);
    return {schemaVersion:1,accepted:true};
   });
@@ -75,7 +79,7 @@ export class Emergency {
      (SELECT count(*)::integer FROM gateway_uploads g WHERE g.node_id=n.node_id) AS successful_uploads,
      (SELECT max(first_seen) FROM gateway_uploads g WHERE g.node_id=n.node_id) AS last_successful_upload
      FROM nodes n LEFT JOIN gateway_health h USING(node_id) WHERE n.group_id=$1 AND n.role='gateway' ORDER BY n.display_name`,[a.group_id])).rows.map(g=>({...g,backendConnected:!!g.observed_at&&Date.now()-Number(g.observed_at)<45000}));
-   const events=(await c.query('SELECT * FROM incident_events WHERE group_id=$1 ORDER BY occurred_at DESC,event_id LIMIT 200',[a.group_id])).rows;
+   const events=(await c.query(`SELECT event_id,incident_id,actor_id,kind,occurred_at,details FROM incident_events WHERE group_id=$1 UNION ALL SELECT event_id,NULL AS incident_id,node_id AS actor_id,kind,occurred_at,details FROM gateway_events WHERE group_id=$1 ORDER BY occurred_at DESC,event_id LIMIT 200`,[a.group_id])).rows;
    const counts=(await c.query('SELECT status,count(*)::integer AS count FROM incidents WHERE group_id=$1 GROUP BY status',[a.group_id])).rows;
    await c.query('COMMIT');
    return {schemaVersion:1,observedAt:Date.now(),incidents,authorities,responders,gateways,events,counts,incidentLimit:500};
@@ -116,7 +120,7 @@ export class Emergency {
     if(!i)throw new ApiError(404,'ENTITY_NOT_FOUND','Incident not found');
     if(i.revision!==b.expectedRevision)throw new ApiError(409,'STALE_RESOLUTION','Refresh incident revision');
     if(['RESOLVED','CANCELLED'].includes(i.status))return invalid('Incident is closed');
-    const d=object(b.data,b.action==='SET_STATUS'?['status','note']:b.action==='ASSIGN_AUTHORITY'?['authorityId']:b.action==='ASSIGN_RESPONDER'?['responderId']:b.action==='SANDBOX_ACK'?['notificationId']:[]);
+    const d={...object(b.data,b.action==='SET_STATUS'?['status','note']:b.action==='ASSIGN_AUTHORITY'?['authorityId']:b.action==='ASSIGN_RESPONDER'?['responderId']:b.action==='SANDBOX_ACK'?['notificationId']:[])};
     let kind=b.action;
     if(b.action==='SET_STATUS'){
      textField(d.note,1000);

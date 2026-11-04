@@ -27,6 +27,13 @@ print("===========================================")
 
 if totalPassed == totalTests {
     print("ALL TESTS PASSED SUCCESSFULLY! (\(totalPassed)/\(totalTests))")
+    if let configPath=ProcessInfo.processInfo.environment["OFFGRID_ACCEPTANCE_CONFIG"] {
+        Task { @MainActor in
+            do {try await runGatewayHTTPAcceptance(configPath:configPath);exit(0)}
+            catch {print("[FAIL] Native HTTP gateway acceptance: \(error)");exit(1)}
+        }
+        RunLoop.main.run()
+    }
     exit(0)
 } else {
     print("TEST SUITE FAILED! (\(totalPassed)/\(totalTests) passed)")

@@ -40,7 +40,7 @@ try {
       "acknowledgments",
       "conflicts",
       "changes",
-      "incidents", "incident_events", "authorities", "responders", "gateway_health", "gateway_uploads", "emergency_commands", "emergency_audit", "authority_notifications",
+      "gateway_events", "incidents", "incident_events", "authorities", "responders", "gateway_health", "gateway_uploads", "emergency_commands", "emergency_audit", "authority_notifications",
     ];
     for (const table of tables)
       await db.query(`SELECT 1 FROM ${table} LIMIT 0`);

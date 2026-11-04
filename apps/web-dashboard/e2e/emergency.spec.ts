@@ -1,0 +1,34 @@
+import {test,expect} from '@playwright/test';
+import {readFileSync,mkdirSync} from 'node:fs';
+import {randomUUID} from 'node:crypto';
+
+test('actual PostgreSQL SOS, operator actions, duplicate-safe retry and reconnect',async({page,context,request})=>{
+ const config=JSON.parse(readFileSync(process.env.OFFGRID_ACCEPTANCE_CONFIG!,'utf8'));
+ const id=randomUUID(),opid=randomUUID();
+ const operation={schemaVersion:1,operationId:opid,originNodeId:config.nodeA,entityId:id,timestamp:Date.now(),lamportClock:1,entityType:'SOS',action:'CREATE',baseVersion:0,payload:{text:'AUTOMATED ACCEPTANCE — medical assistance at test location. No real emergency.',category:'MEDICAL',location:{label:'Synthetic acceptance location',latitude:31.634,longitude:74.8723}}};
+ const push=()=>request.post('/api/v1/sync/push',{headers:{Authorization:'Bearer '+config.gatewayCredential},data:{schemaVersion:1,nodeId:config.nodeC,operations:[operation]}});
+ await page.goto('/');await expect(page.getByText('Operator sign-in required')).toBeVisible();
+ await page.goto('/login');await page.locator('input[name=credential]').fill(config.operatorCredential);await page.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Emergency operations'})).toBeVisible();
+ const first=await push();expect(first.status()).toBe(200);expect((await first.json()).results[0].duplicate).toBe(false);
+ const row=page.locator('.incident-row').filter({hasText:id.slice(0,8).toUpperCase()});await expect(row).toBeVisible();
+ const retry=await push();expect((await retry.json()).results[0].duplicate).toBe(true);await expect(row).toHaveCount(1);
+ await row.click();await expect(page.getByText(operation.payload.text)).toBeVisible();
+ await page.getByRole('button',{name:'Acknowledge incident',exact:true}).click();await expect(page.locator('.detail-title .status-tag')).toHaveText('acknowledged');
+ await page.getByRole('button',{name:'Close incident'}).click();
+ await page.getByRole('button',{name:'Authorities',exact:true}).click();
+ await page.getByLabel('Name',{exact:true}).fill('Acceptance rescue (sandbox)');await page.getByLabel('Contact details').fill('No external contact');await page.getByRole('button',{name:'Save directory entry'}).click();
+ await expect(page.getByRole('heading',{name:'Acceptance rescue (sandbox)'})).toBeVisible();
+ await page.getByRole('button',{name:/^Operations/}).click();await row.click();
+ await page.getByLabel('Assigned authority').selectOption({label:'Acceptance rescue (sandbox)'});await page.getByRole('button',{name:'Assign authority',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Submit sandbox notification'})).toBeEnabled();await page.getByRole('button',{name:'Submit sandbox notification'}).click();
+ await expect(page.getByText('sandbox submitted',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Simulate acknowledgment'}).click();await expect(page.getByText('sandbox acknowledged',{exact:true})).toBeVisible();
+ await expect(page.locator('.detail-title .status-tag')).toHaveText('acknowledged');
+ mkdirSync('test-results',{recursive:true});await page.screenshot({path:'test-results/incident-workflow.png',fullPage:true});
+ await page.getByRole('button',{name:'Close incident'}).click();await page.getByTitle('Center on incidents').click();await page.screenshot({path:'test-results/operations-desktop.png',fullPage:true});
+ await context.setOffline(true);await page.getByTitle('Refresh snapshot').click();await expect(page.getByText(/Showing the last snapshot/)).toBeVisible();
+ await context.setOffline(false);await page.getByTitle('Refresh snapshot').click();await expect(page.getByText(/Showing the last snapshot/)).toHaveCount(0);
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:'test-results/operations-mobile.png',fullPage:true});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ const snapshot=await page.request.get('/api/v1/emergency/snapshot');expect((await snapshot.json()).incidents.filter((i:any)=>i.operation_id===opid)).toHaveLength(1);
+});

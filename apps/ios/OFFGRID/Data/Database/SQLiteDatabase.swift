@@ -131,7 +131,7 @@ public final class SQLiteDatabase: @unchecked Sendable {
                 print("[SQLiteDatabase] Migration v2 failed: \(error)")
             }
         }
-        if getUserVersion() < 3 {
+        if getUserVersion() == 2 {
             do {
                 try performTransaction {
                     try executeOrThrow(sql: """
