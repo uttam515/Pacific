@@ -43,6 +43,20 @@ export function createHttp(
     (req: Request, res: Response, next: NextFunction) => {
       Promise.resolve(fn(req, res)).catch(next);
     };
+  const isAllowedOrigin = (origin: string | undefined) => {
+    if (!origin) return true;
+    if (origin === options.origin) return true;
+    if (options.insecureLocal) {
+      if (
+        origin.startsWith("http://localhost:") ||
+        origin.startsWith("http://127.0.0.1:") ||
+        origin.startsWith("http://192.168.") ||
+        origin.startsWith("http://10.") ||
+        origin.startsWith("http://172.")
+      ) return true;
+    }
+    return false;
+  };
   const cookie = (req: { headers: { cookie?: string } }) =>
     req.headers.cookie
       ?.split(";")
@@ -56,7 +70,7 @@ export function createHttp(
     if (secret) return authenticate(engine.db, secret, "bearer");
     if (
       !["GET", "HEAD"].includes(req.method) &&
-      req.headers.origin !== options.origin
+      !isAllowedOrigin(req.headers.origin)
     )
       throw new ApiError(403, "FORBIDDEN", "Origin verification required");
     return authenticate(engine.db, cookie(req), "session");
@@ -65,7 +79,7 @@ export function createHttp(
   app.use(express.urlencoded({ extended: false, limit: 4096 }));
   app.use((req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
-    if (req.headers.origin && req.headers.origin !== options.origin)
+    if (req.headers.origin && !isAllowedOrigin(req.headers.origin))
       return next(new ApiError(403, "FORBIDDEN", "Origin not permitted"));
     next();
   });
@@ -288,9 +302,9 @@ export function createHttp(
     void (async () => {
       if (req.url !== "/ws") throw new Error("path");
       const b = bearer(req);
-      if (req.headers.origin && req.headers.origin !== options.origin)
+      if (req.headers.origin && !isAllowedOrigin(req.headers.origin))
         throw new Error("origin");
-      if (!b && req.headers.origin !== options.origin)
+      if (!b && req.headers.origin && !isAllowedOrigin(req.headers.origin))
         throw new Error("origin");
       const a = await authenticate(
         engine.db,
