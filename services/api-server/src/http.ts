@@ -141,7 +141,7 @@ export function createHttp(
       );
   });
   const login = asyncRoute(async (req, res) => {
-    if (req.headers.origin !== options.origin)
+    if (!isAllowedOrigin(req.headers.origin))
       throw new ApiError(403, "FORBIDDEN", "Login origin not permitted");
     const raw =
       typeof req.body?.credential === "string"
