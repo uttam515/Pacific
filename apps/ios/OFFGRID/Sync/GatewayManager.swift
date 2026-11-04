@@ -78,6 +78,7 @@ public struct GatewayConfiguration: Codable {
         var req=URLRequest(url:c.baseURL.appendingPathComponent(path));req.timeoutInterval=15
         req.httpMethod=body==nil ? "GET":"POST";req.httpBody=body
         req.setValue("Bearer "+c.bearerCredential,forHTTPHeaderField:"Authorization")
+        req.setValue(nodeId,forHTTPHeaderField:"X-Node-ID")
         req.setValue("application/json",forHTTPHeaderField:"Content-Type")
         let (data,response)=try await session.data(for:req)
         guard let r=response as? HTTPURLResponse,r.url?.host==c.baseURL.host,r.url?.scheme==c.baseURL.scheme else {throw GatewayFailure.invalidResponse}
@@ -97,7 +98,7 @@ public struct GatewayConfiguration: Codable {
         guard active,!running,configuration != nil else {refreshCounts();return}
         running=true;defer{running=false;refreshCounts()}
         do {
-            let (readyData,code)=try await request("api/v1/gateway/ready")
+            let (readyData,code)=try await request("api/v1/gateway/ready?nodeId=" + nodeId)
             guard code==200,let ready=try JSONSerialization.jsonObject(with:readyData) as? [String:Any],ready["ready"] as? Bool==true,ready["nodeId"] as? String==nodeId,let serverId=ready["serverNodeId"] as? String else {throw GatewayFailure.unauthorized}
             backendReachable=true;status="Backend reachable; uploading queued SOS"
             for item in try queue.pending() {

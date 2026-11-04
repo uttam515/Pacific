@@ -24,6 +24,7 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate, Me
     private let messageRepository: MessageRepository
     private let operationRepository: OperationQueueRepository
     private let logger: NetworkDiagnosticLogger = .shared
+    private var cancellables = Set<AnyCancellable>()
 
     public init(
         nodeDisplayName: String? = nil,
@@ -76,6 +77,13 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate, Me
         engine.onAckReceived = { _ in
             NotificationCenter.default.post(name: TransportManager.didUpdateMessagesNotification, object: nil)
         }
+
+        gatewayManager.$backendReachable
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] reachable in
+                self?.isGatewayConnected = reachable
+            }
+            .store(in: &cancellables)
     }
 
     public func startAllTransports() {

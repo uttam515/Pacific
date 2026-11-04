@@ -79,6 +79,9 @@ export function createHttp(
   app.use(express.urlencoded({ extended: false, limit: 4096 }));
   app.use((req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
+    if (req.path.startsWith("/api/")) {
+      console.log(`[API] ${req.method} ${req.path} (${req.socket.remoteAddress || "local"})`);
+    }
     if (req.headers.origin && !isAllowedOrigin(req.headers.origin))
       return next(new ApiError(403, "FORBIDDEN", "Origin not permitted"));
     next();
@@ -239,7 +242,17 @@ export function createHttp(
   );
   app.get("/api/v1/connectivity", (_req,res)=>res.type("text/plain").send("OFFGRID_INTERNET_OK_V1"));
   app.get("/api/v1/emergency/incidents", asyncRoute(async(req,res)=>res.json(await emergency.list(await actor(req),String(req.query.cursor||""),Number(req.query.limit||100)))));
-  app.get("/api/v1/gateway/ready", asyncRoute(async (req,res) => res.json(await emergency.ready(await actor(req)))));
+  app.get(
+    "/api/v1/gateway/ready",
+    asyncRoute(async (req, res) =>
+      res.json(
+        await emergency.ready(
+          await actor(req),
+          (req.query.nodeId as string) || (req.headers["x-node-id"] as string),
+        ),
+      ),
+    ),
+  );
   app.post("/api/v1/gateway/heartbeat", asyncRoute(async (req,res) => res.json(await emergency.heartbeat(await actor(req),req.body))));
   app.post("/api/v1/gateway/observations", asyncRoute(async (req,res) => res.json(await emergency.observation(await actor(req),req.body))));
   app.get("/api/v1/emergency/snapshot", asyncRoute(async (req,res) => res.json(await emergency.snapshot(await actor(req)))));

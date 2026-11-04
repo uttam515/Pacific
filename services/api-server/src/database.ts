@@ -7,6 +7,7 @@ export type Actor = {
   group_id: string;
   role: "node" | "gateway" | "operator" | "server";
   kind: "bearer" | "session";
+  token_hash?: string;
 };
 export const hash = (token: string) =>
   createHash("sha256").update(token).digest("hex");
@@ -104,7 +105,7 @@ export async function authenticate(
 ): Promise<Actor> {
   if (!secret) throw new ApiError(401, "UNAUTHORIZED", "Credential required");
   const r = await p.query(
-    "SELECT n.*,c.kind FROM credentials c JOIN nodes n USING(node_id) WHERE token_hash=$1 AND c.kind=$2 AND NOT revoked AND (expires_at IS NULL OR expires_at>now())",
+    "SELECT n.*,c.kind,c.token_hash FROM credentials c JOIN nodes n USING(node_id) WHERE token_hash=$1 AND c.kind=$2 AND NOT revoked AND (expires_at IS NULL OR expires_at>now())",
     [hash(secret), kind],
   );
   if (!r.rowCount)

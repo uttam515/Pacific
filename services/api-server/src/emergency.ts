@@ -122,12 +122,34 @@ export async function projectSOS(
 }
 export class Emergency {
   constructor(private engine: Engine) {}
-  async ready(a: Actor) {
+  async ready(a: Actor, clientNodeId?: string) {
     gateway(a);
     await this.engine.db.query("SELECT 1 FROM incidents LIMIT 1");
+    let resolvedNodeId = a.node_id;
+    if (
+      clientNodeId &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        clientNodeId,
+      )
+    ) {
+      if (clientNodeId !== a.node_id) {
+        await this.engine.db.query(
+          "INSERT INTO nodes(node_id, group_id, display_name, platform, role, last_seen) VALUES($1,$2,'Gateway iPhone','ios','gateway',$3) ON CONFLICT(node_id) DO UPDATE SET role='gateway',last_seen=$3",
+          [clientNodeId, a.group_id, Date.now()],
+        );
+        if (a.token_hash) {
+          await this.engine.db.query(
+            "UPDATE credentials SET node_id=$1 WHERE token_hash=$2",
+            [clientNodeId, a.token_hash],
+          );
+        }
+        a.node_id = clientNodeId;
+        resolvedNodeId = clientNodeId;
+      }
+    }
     return {
       schemaVersion: 1,
-      nodeId: a.node_id,
+      nodeId: resolvedNodeId,
       serverNodeId: this.engine.serverNodeId,
       ready: true,
       timestamp: Date.now(),

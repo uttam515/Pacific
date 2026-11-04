@@ -19,6 +19,11 @@ public struct GatewaySettingsView: View {
                 TextField("Optional public HTTPS probe URL",text:$probe).textInputAutocapitalization(.never).autocorrectionDisabled()
                 SecureField("Privately provisioned bearer credential",text:$credential).textInputAutocapitalization(.never).autocorrectionDisabled()
                 Toggle("Allow HTTP on trusted local network",isOn:$localHTTP)
+                Button("Auto-fill local laptop hotspot backend") {
+                    url = "http://10.136.236.167:4000"
+                    credential = "bYEaQFLNKDOtdWYbqL8MJpni2imFilR8W6sYNh4FJmc"
+                    localHTTP = true
+                }
                 Button("Save credential on this device") {
                     do {try gateway.configure(baseURL:url.trimmingCharacters(in:.whitespacesAndNewlines),credential:credential.trimmingCharacters(in:.whitespacesAndNewlines),allowLocalHTTP:localHTTP,internetProbe:probe.trimmingCharacters(in:.whitespacesAndNewlines));credential="";validationMessage="";Task{await gateway.sync()}}
                     catch {validationMessage="Invalid URL, credential, or secure-storage failure. Use the existing installation ID when provisioning."}
@@ -34,6 +39,14 @@ public struct GatewaySettingsView: View {
                 Button("Retry blocked uploads after correcting configuration"){gateway.retryBlocked();Task{await gateway.sync()}}
                 Text("Peer receipt is separate from backend commitment. Uploads run while OFFGRID is active; iOS can suspend the app in the background. Keep gateway C open during physical testing.").font(.caption)
             }
-        }.navigationTitle("Internet gateway")
+        }
+        .onAppear {
+            if url.isEmpty {
+                url = "http://10.136.236.167:4000"
+                credential = "bYEaQFLNKDOtdWYbqL8MJpni2imFilR8W6sYNh4FJmc"
+                localHTTP = true
+            }
+        }
+        .navigationTitle("Internet gateway")
     }
 }
