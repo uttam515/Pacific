@@ -86,17 +86,39 @@ export async function projectSOS(
       time,
     ],
   );
-  if (r.rowCount)
+  if (r.rowCount) {
+    await c.query(
+      "INSERT INTO incident_events VALUES($1,$2,$3,$4,'SOS_CREATION_REPORTED',$5,$6)",
+      [
+        randomUUID(),
+        op.entityId,
+        a.group_id,
+        op.originNodeId,
+        op.timestamp,
+        {
+          operationId: op.operationId,
+          source: "origin timestamp in accepted operation",
+        },
+      ],
+    );
     await incidentEvent(c, a, op.entityId, "SERVER_RECEIVED", {
       operationId: op.operationId,
       eventTimestamp: op.timestamp,
       source: "backend transaction",
     });
-  if (a.role === "gateway")
-    await c.query(
-      "INSERT INTO gateway_uploads(node_id,operation_id,first_seen,last_seen) VALUES($1,$2,$3,$3) ON CONFLICT(node_id,operation_id) DO UPDATE SET last_seen=excluded.last_seen,attempts=gateway_uploads.attempts+1",
+  }
+  if (a.role === "gateway") {
+    const upload = await c.query(
+      "INSERT INTO gateway_uploads(node_id,operation_id,first_seen,last_seen) VALUES($1,$2,$3,$3) ON CONFLICT(node_id,operation_id) DO UPDATE SET last_seen=excluded.last_seen,attempts=gateway_uploads.attempts+1 RETURNING attempts",
       [a.node_id, op.operationId, time],
     );
+    if (upload.rows[0].attempts === 1) {
+      await incidentEvent(c, a, op.entityId, "GATEWAY_UPLOAD_ACCEPTED", {
+        operationId: op.operationId,
+        firstIncidentCommit: !!r.rowCount,
+      });
+    }
+  }
 }
 export class Emergency {
   constructor(private engine: Engine) {}

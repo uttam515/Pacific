@@ -820,6 +820,8 @@ export default function Emergency() {
                   <dd>
                     {time(i.operation.timestamp)} / {time(i.received_at)}
                   </dd>
+                  <dt>Mesh priority</dt>
+                  <dd>P0 · Emergency SOS</dd>
                   <dt>First gateway</dt>
                   <dd>{short(i.first_gateway_id)}</dd>
                 </dl>
@@ -1184,7 +1186,7 @@ function IncidentMap({
             transform={`translate(${x(i.operation.payload.location.longitude!)},${y(i.operation.payload.location.latitude!)})`}
             style={{ cursor: "pointer" }}
           >
-            <title>{`${short(i.incident_id)} · ${label(i.operation.payload.category)} · ${i.status}`}</title>
+            <title>{`${short(i.incident_id)} · ${label(i.operation.payload.category)} · P0 emergency SOS · ${i.operation.payload.location.label} (${i.operation.payload.location.latitude}, ${i.operation.payload.location.longitude}) · received ${time(i.received_at)} · ${label(i.status)}`}</title>
             <circle
               r={selected === i.incident_id ? 17 : 13}
               fill="#d65745"

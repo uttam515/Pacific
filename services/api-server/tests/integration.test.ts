@@ -142,6 +142,8 @@ test("real PostgreSQL and HTTP integration", async (t) => {
       assert.equal((await request("/emergency/commands",op,cmd("SET_STATUS",sos.entityId,7,{status:"RESOLVED",note:"test complete"}))).status,200);
       assert.equal((await request("/emergency/commands",op,cmd("SET_STATUS",sos.entityId,8,{status:"ACKNOWLEDGED",note:"closed"}))).status,422);
       detail=(await request("/incidents/"+sos.entityId,op)).json;
+      assert.equal(detail.events.filter((e:any)=>e.kind==="SOS_CREATION_REPORTED").length,1);
+      assert.equal(detail.events.filter((e:any)=>e.kind==="GATEWAY_UPLOAD_ACCEPTED").length,2);
       assert.equal(detail.incident.status,"RESOLVED");assert.ok(detail.events.some((e:any)=>e.kind==="SANDBOX_AUTHORITY_ACKNOWLEDGED"));
       assert.equal((await db.query("SELECT count(*)::int AS n FROM emergency_audit WHERE subject_id=$1",[sos.entityId])).rows[0].n,7);
     });
