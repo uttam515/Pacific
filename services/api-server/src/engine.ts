@@ -77,9 +77,18 @@ export class Engine {
     return "c" + r.rows[0].sequence;
   }
   async authorizeOrigin(c: Client, a: Actor, op: Operation) {
-    const r = await c.query("SELECT group_id FROM nodes WHERE node_id=$1", [
+    let r = await c.query("SELECT group_id FROM nodes WHERE node_id=$1", [
       op.originNodeId,
     ]);
+    if (!r.rowCount && a.role === "gateway") {
+      await c.query(
+        "INSERT INTO nodes(node_id, group_id, display_name, platform, role, last_seen) VALUES($1, $2, 'Mesh Node', 'ios', 'node', $3) ON CONFLICT (node_id) DO NOTHING",
+        [op.originNodeId, a.group_id, Date.now()],
+      );
+      r = await c.query("SELECT group_id FROM nodes WHERE node_id=$1", [
+        op.originNodeId,
+      ]);
+    }
     return (
       !!r.rowCount &&
       r.rows[0].group_id === a.group_id &&

@@ -75,6 +75,12 @@ export function createHttp(
       throw new ApiError(403, "FORBIDDEN", "Origin verification required");
     return authenticate(engine.db, cookie(req), "session");
   }
+  app.use((req, _res, next) => {
+    if (req.url.includes("%3F")) {
+      req.url = req.url.replaceAll("%3F", "?");
+    }
+    next();
+  });
   app.use(express.json({ limit: 1048576, strict: true }));
   app.use(express.urlencoded({ extended: false, limit: 4096 }));
   app.use((req, res, next) => {

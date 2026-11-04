@@ -75,7 +75,13 @@ public struct GatewayConfiguration: Codable {
     }
     private func request(_ path:String,body:Data?=nil) async throws -> (Data,Int) {
         guard let c=configuration else { throw GatewayFailure.invalidConfiguration }
-        var req=URLRequest(url:c.baseURL.appendingPathComponent(path));req.timeoutInterval=15
+        let fullURL: URL
+        if let relative = URL(string: path, relativeTo: c.baseURL) {
+            fullURL = relative.absoluteURL
+        } else {
+            fullURL = c.baseURL.appendingPathComponent(path)
+        }
+        var req=URLRequest(url:fullURL);req.timeoutInterval=15
         req.httpMethod=body==nil ? "GET":"POST";req.httpBody=body
         req.setValue("Bearer "+c.bearerCredential,forHTTPHeaderField:"Authorization")
         req.setValue(nodeId,forHTTPHeaderField:"X-Node-ID")
