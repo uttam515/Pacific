@@ -237,7 +237,7 @@ function Topology({ s, select }: { s: Snapshot; select: (n: Node) => void }) {
 export default function App() {
   const [page, setPage] = useState("Overview"),
     [s, setS] = useState<Snapshot>(emptySnapshot),
-    [mode, setMode] = useState<"demo" | "live">("demo"),
+    [mode, setMode] = useState<"demo" | "live">("live"),
     [connection, setConnection] = useState<Connection>({
       apiUrl: "",
       wsUrl: "",

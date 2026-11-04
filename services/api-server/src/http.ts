@@ -158,7 +158,7 @@ export function createHttp(
     res.cookie("offgrid_session", session, {
       httpOnly: true,
       secure: !options.insecureLocal,
-      sameSite: "strict",
+      sameSite: options.insecureLocal ? "lax" : "strict",
       path: "/",
       maxAge: 8 * 3600000,
     });
@@ -300,21 +300,22 @@ export function createHttp(
   });
   server.on("upgrade", (req, socket, head) => {
     void (async () => {
-      if (req.url !== "/ws") throw new Error("path");
-      const b = bearer(req);
+      const parsedUrl = new URL(req.url || "", "http://localhost");
+      if (parsedUrl.pathname !== "/ws") throw new Error("path");
+      const queryToken = parsedUrl.searchParams.get("token") || "";
+      const b = bearer(req) || queryToken;
       if (req.headers.origin && !isAllowedOrigin(req.headers.origin))
         throw new Error("origin");
-      if (!b && req.headers.origin && !isAllowedOrigin(req.headers.origin))
-        throw new Error("origin");
+      const secret = b || cookie(req);
       const a = await authenticate(
         engine.db,
-        b || cookie(req),
+        secret,
         b ? "bearer" : "session",
       );
       sockets.handleUpgrade(req, socket, head, (ws) => {
         actors.set(ws, a);
         (ws as WebSocket & { credentialHash: string }).credentialHash = hash(
-          b || cookie(req),
+          secret,
         );
         ws.on("error", () => {});
         ws.on("message", () => ws.close(1008, "Notifications only"));

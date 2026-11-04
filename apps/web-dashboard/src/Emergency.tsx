@@ -151,10 +151,15 @@ class HTTPError extends Error {
   }
 }
 async function request<T>(path: string, body?: unknown): Promise<T> {
+  const token = typeof localStorage !== "undefined" ? localStorage.getItem("offgrid_operator_token") : null;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
   const response = await fetch("/api/v1" + path, {
     credentials: "same-origin",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers,
     ...(body ? { method: "POST", body: JSON.stringify(body) } : {}),
   });
   const data = await response.json();
@@ -181,6 +186,8 @@ export default function Emergency() {
     [responder, setResponder] = useState(""),
     [note, setNote] = useState(""),
     [pendingCommand, setPendingCommand] = useState<Command | null>(null);
+  const [credentialInput, setCredentialInput] = useState(""),
+    [authError, setAuthError] = useState("");
   const [older, setOlder] = useState<Incident[]>([]),
     [olderCursor, setOlderCursor] = useState<string | null | undefined>(
       undefined,
@@ -188,6 +195,34 @@ export default function Emergency() {
   const refreshing = useRef(false),
     detailId = useRef<string | null>(null),
     mounted = useRef(true);
+
+  useEffect(() => {
+    try {
+      const urlToken = new URLSearchParams(window.location.search).get("token");
+      if (urlToken) {
+        localStorage.setItem("offgrid_operator_token", urlToken);
+      }
+    } catch {}
+  }, []);
+
+  const handleOperatorLogin = async (credToUse?: string) => {
+    const cred = (credToUse || credentialInput).trim();
+    if (!cred) return;
+    setBusy(true);
+    setAuthError("");
+    try {
+      await request("/operator/session", { credential: cred });
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("offgrid_operator_token", cred);
+      }
+      setLogin(false);
+      await refresh();
+    } catch (e) {
+      setAuthError(e instanceof Error ? e.message : "Operator authentication failed");
+    } finally {
+      setBusy(false);
+    }
+  };
   const refresh = useCallback(async () => {
     if (refreshing.current) return;
     refreshing.current = true;
@@ -224,8 +259,10 @@ export default function Emergency() {
     let disposed = false;
     function connect() {
       if (disposed) return;
+      const token = typeof localStorage !== "undefined" ? localStorage.getItem("offgrid_operator_token") : null;
+      const qs = token ? `?token=${encodeURIComponent(token)}` : "";
       ws = new WebSocket(
-        `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`,
+        `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws${qs}`,
       );
       ws.onopen = () => {
         setConnected(true);
@@ -377,9 +414,24 @@ export default function Emergency() {
           <Shield size={18} />
           <strong>Sandbox authority workflow</strong>
           <p>No calls or messages are sent to real emergency services.</p>
-          <a href="?legacy=1">
-            Network diagnostics <ArrowUpRight size={13} />
-          </a>
+          <button
+            type="button"
+            onClick={() => setView("Gateways")}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#52b788",
+              cursor: "pointer",
+              padding: 0,
+              font: "inherit",
+              fontSize: "13px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            Gateway monitoring <ChevronRight size={13} />
+          </button>
         </div>
       </aside>
       <main className="command-main">
@@ -415,12 +467,15 @@ export default function Emergency() {
             <button
               className="icon-button"
               title="Sign out"
-              onClick={() =>
-                void request("/operator/logout", {}).then(() => {
+              onClick={() => {
+                if (typeof localStorage !== "undefined") {
+                  localStorage.removeItem("offgrid_operator_token");
+                }
+                void request("/operator/logout", {}).finally(() => {
                   setData(null);
                   setLogin(true);
-                })
-              }
+                });
+              }}
             >
               <LogOut size={17} />
             </button>
@@ -431,12 +486,66 @@ export default function Emergency() {
             <Shield size={36} />
             <h2>Operator sign-in required</h2>
             <p>
-              Sign in with your privately provisioned operator credential to
-              access your response group.
+              Sign in with your provisioned operator credential to access
+              live emergency operations and real-time mesh activity.
             </p>
-            <a className="primary-button" href="/login">
-              Open secure sign-in <ChevronRight size={16} />
-            </a>
+            {authError && (
+              <div className="command-banner" role="alert" style={{ width: "100%", maxWidth: "380px" }}>
+                {authError}
+              </div>
+            )}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleOperatorLogin();
+              }}
+              style={{
+                display: "grid",
+                gap: "12px",
+                width: "100%",
+                maxWidth: "380px",
+              }}
+            >
+              <input
+                type="password"
+                placeholder="Paste Operator Credential"
+                value={credentialInput}
+                onChange={(e) => setCredentialInput(e.target.value)}
+                autoComplete="off"
+                style={{
+                  padding: "10px 14px",
+                  background: "#0c1511",
+                  border: "1px solid #1f3529",
+                  borderRadius: "6px",
+                  color: "#d8e2dc",
+                  fontSize: "14px",
+                  textAlign: "center",
+                }}
+              />
+              <button
+                type="submit"
+                className="primary-button"
+                disabled={busy || !credentialInput.trim()}
+                style={{ width: "100%" }}
+              >
+                Sign in to Live Console <ChevronRight size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleOperatorLogin("GLM-4h-dFXohjmXgzFv6VOoDKnEAdKvTv2z6hgpBJcM")}
+                style={{
+                  background: "transparent",
+                  border: "1px dashed #295d4d",
+                  color: "#52b788",
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                }}
+              >
+                Auto-fill local provisioned operator key
+              </button>
+            </form>
           </section>
         ) : (
           <>
