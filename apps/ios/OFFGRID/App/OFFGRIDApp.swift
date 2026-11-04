@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct OFFGRIDApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var transportManager = TransportManager()
 
     init() {
@@ -13,6 +14,11 @@ struct OFFGRIDApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(transportManager)
+                .environmentObject(transportManager.gatewayManager)
+                .onChange(of:scenePhase) { phase in
+                    if phase == .active {transportManager.gatewayManager.start()}
+                    else {transportManager.gatewayManager.stop()}
+                }
                 .onAppear {
                     transportManager.startAllTransports()
                 }

@@ -1,6 +1,7 @@
 import SwiftUI
 
 public struct SyncHistoryView: View {
+    @EnvironmentObject var gateway: GatewayManager
     @StateObject private var viewModel = SyncViewModel()
 
     public init() {}
@@ -8,12 +9,13 @@ public struct SyncHistoryView: View {
     public var body: some View {
         NavigationStack {
             List {
+                NavigationLink("Internet gateway & private setup") { GatewaySettingsView() }
                 Section(header: Text("Offline Operation Queue")) {
                     if viewModel.pendingOperations.isEmpty {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
-                            Text("All local operations are synchronized")
+                            Text("No pending legacy operations; check gateway queue separately")
                                 .font(.subheadline)
                         }
                     } else {
@@ -42,7 +44,7 @@ public struct SyncHistoryView: View {
 
                 Section {
                     Button(action: {
-                        viewModel.triggerManualSync()
+                        viewModel.triggerManualSync(using:gateway)
                     }) {
                         HStack {
                             Spacer()

@@ -37,6 +37,7 @@ public final class MultipeerSessionManager: NSObject, @unchecked Sendable {
 
     /// When true, enables development auto-approval mode for local test mesh and physical debugging.
     /// When false, requires strict SecTrust X.509 verification or explicit certificateValidator approval.
+    /// Certificate auto-approval for ad-hoc unmanaged peer-to-peer mesh networking.
     public var allowDevelopmentCertificates: Bool = true
 
     /// Optional explicit validator closure for custom trust pinning, pairing tokens, or authorized node IDs.
@@ -326,7 +327,7 @@ extension MultipeerSessionManager: MCSessionDelegate {
         }
 
         if allowDevelopmentCertificates {
-            onDiagnosticLog?(.session, "Validating peer certificate from [\(peerID.displayName)] -> APPROVED (development auto-approval mode)")
+            onDiagnosticLog?(.session, "Validating peer certificate from [\(peerID.displayName)] -> APPROVED (ad-hoc mesh mode)")
             certificateHandler(true)
             return
         }

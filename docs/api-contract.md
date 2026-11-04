@@ -1,3 +1,5 @@
+> **Contract review update:** [v1 candidate](contracts/v1/README.md) supersedes the draft definitions below for review. Neither these drafts nor the candidate are implemented backend APIs. Freeze requires all three engineers' approval.
+
 # OFFGRID API & Synchronization Contract
 
 > **Owner:** Engineer 1 (Web, Backend & Infrastructure Lead)  

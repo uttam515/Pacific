@@ -17,6 +17,14 @@ public final class KeychainHelper: Sendable {
         return SecItemAdd(query as CFDictionary, nil) == errSecSuccess
     }
 
+    public func saveDeviceOnly(key: String, data: Data) -> Bool {
+        let query: [String: Any] = [kSecClass as String:kSecClassGenericPassword,kSecAttrService as String:serviceName,kSecAttrAccount as String:key]
+        SecItemDelete(query as CFDictionary)
+        var value=query;value[kSecValueData as String]=data
+        value[kSecAttrAccessible as String]=kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        return SecItemAdd(value as CFDictionary,nil)==errSecSuccess
+    }
+
     public func read(key: String) -> Data? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

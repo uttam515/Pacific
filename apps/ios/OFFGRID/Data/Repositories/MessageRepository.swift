@@ -36,4 +36,9 @@ public final class MessageRepository: MessageRepositoryProtocol {
     public func saveMessageWithOperation(message: OFFGRIDMessage, operation: OFFGRIDOperation) throws -> SQLiteDatabase.OperationInsertionResult {
         return try database.saveMessageWithOperation(message: message, operation: operation)
     }
+    @discardableResult
+    public func saveMessageWithOperation(message: OFFGRIDMessage, operation: OFFGRIDOperation, gatewayEnvelope: ContractV1.Envelope) throws -> SQLiteDatabase.OperationInsertionResult {
+        try database.saveMessageWithOperation(message:message,operation:operation,gatewayEnvelope:gatewayEnvelope)
+    }
+
 }

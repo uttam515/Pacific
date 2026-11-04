@@ -1,9 +1,15 @@
-# OFFGRID API Server
+# OFFGRID backend foundation
 
-> **Lead:** Engineer 1  
-> **Stack:** Node.js, Express, WebSocket (`ws`), PostgreSQL
+Pinned Contract rc.2: `d321ccbf0166a78aa6c07d8803167ebe640d8e3d`.
 
-Provides the central HTTP REST endpoints and WebSocket gateway for the OFFGRID network.
-- Ingestion of client synchronization batches (`/api/v1/sync/push`).
-- Operation history pull (`/api/v1/sync/pull`).
-- Real-time event forwarding to connected web clients and stationary gateways.
+See [local backend setup](../../docs/backend-local-setup.md) for PostgreSQL, migrations, private node provisioning, same-origin operator login, LAN/HTTPS setup, supported endpoints, test commands, and current limitations.
+
+- `migrate`: apply versioned SQL migrations; DATABASE_URL required.
+- `provision`: create a node-bound credential, printed privately once.
+- `start`: run compiled HTTP/WebSocket server (build first).
+- `test`: unit tests; no database substitutes.
+- `test:integration`: real PostgreSQL plus HTTP/WebSocket, disposable TEST_DATABASE_URL ending `_test` required.
+
+The dashboard action adapter is gated; live snapshot reading and canonical receipt/conflict APIs are separate. This is implemented source under review, not a claim of a deployed URL or physical iPhone acceptance.
+
+macOS hosting: [Mac setup and private provisioning](../../docs/backend-macos-setup.md). CLI `status` verifies recorded migrations/tables. Use `provision ... --credential-file <new-private-file>` to avoid printing the bearer credential.

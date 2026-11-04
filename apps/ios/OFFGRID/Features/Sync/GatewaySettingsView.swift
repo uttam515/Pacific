@@ -1,0 +1,52 @@
+import SwiftUI
+
+public struct GatewaySettingsView: View {
+    @EnvironmentObject var gateway:GatewayManager
+    @EnvironmentObject var transport:TransportManager
+    @State private var url=""
+    @State private var credential=""
+    @State private var probe=""
+    @State private var localHTTP=false
+    @State private var validationMessage=""
+    public var body: some View {
+        Form {
+            Section("Existing installation identity") {
+                Text(transport.localNodeId).font(.caption.monospaced()).textSelection(.enabled)
+                Text("Provision this exact ID as a gateway. Configuration never replaces it.").font(.caption)
+            }
+            Section("Private backend configuration") {
+                TextField("https://backend.example",text:$url).textInputAutocapitalization(.never).autocorrectionDisabled()
+                TextField("Optional public HTTPS probe URL",text:$probe).textInputAutocapitalization(.never).autocorrectionDisabled()
+                SecureField("Privately provisioned bearer credential",text:$credential).textInputAutocapitalization(.never).autocorrectionDisabled()
+                Toggle("Allow HTTP on trusted local network",isOn:$localHTTP)
+                Button("Auto-fill local laptop hotspot backend") {
+                    url = "http://10.136.236.167:4000"
+                    credential = "bYEaQFLNKDOtdWYbqL8MJpni2imFilR8W6sYNh4FJmc"
+                    localHTTP = true
+                }
+                Button("Save credential on this device") {
+                    do {try gateway.configure(baseURL:url.trimmingCharacters(in:.whitespacesAndNewlines),credential:credential.trimmingCharacters(in:.whitespacesAndNewlines),allowLocalHTTP:localHTTP,internetProbe:probe.trimmingCharacters(in:.whitespacesAndNewlines));credential="";validationMessage="";Task{await gateway.sync()}}
+                    catch {validationMessage="Invalid URL, credential, or secure-storage failure. Use the existing installation ID when provisioning."}
+                }
+                if !validationMessage.isEmpty {Text(validationMessage).foregroundColor(.red)}
+            }
+            Section("SOS upload queue") {
+                Text(gateway.status)
+                LabeledContent("Pending",value:String(gateway.pendingCount))
+                LabeledContent("Needs review",value:String(gateway.failedCount))
+                LabeledContent("Backend committed",value:String(gateway.committedCount))
+                Button("Check backend and retry due uploads"){Task{await gateway.sync()}}
+                Button("Retry blocked uploads after correcting configuration"){gateway.retryBlocked();Task{await gateway.sync()}}
+                Text("Peer receipt is separate from backend commitment. Uploads run while OFFGRID is active; iOS can suspend the app in the background. Keep gateway C open during physical testing.").font(.caption)
+            }
+        }
+        .onAppear {
+            if url.isEmpty {
+                url = "http://10.136.236.167:4000"
+                credential = "bYEaQFLNKDOtdWYbqL8MJpni2imFilR8W6sYNh4FJmc"
+                localHTTP = true
+            }
+        }
+        .navigationTitle("Internet gateway")
+    }
+}

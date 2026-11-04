@@ -39,6 +39,8 @@
     <string>OFFGRID uses Bluetooth Low Energy to discover and communicate with nearby devices when internet is unavailable.</string>
     <key>NSBluetoothPeripheralUsageDescription</key>
     <string>OFFGRID advertises a local BLE GATT service to enable cross-platform communication with Android devices.</string>
+    <key>NSAppTransportSecurity</key>
+    <dict><key>NSAllowsLocalNetworking</key><true/></dict>
     <key>NSLocalNetworkUsageDescription</key>
     <string>OFFGRID uses the local network and peer-to-peer Wi-Fi for offline mesh communications.</string>
     <key>NSBonjourServices</key>

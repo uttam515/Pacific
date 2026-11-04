@@ -19,6 +19,7 @@ public final class MeshEngine: @unchecked Sendable {
     public let networkAnalyzer: NetworkAnalyzer
     public let peerTrustManager: PeerTrustManager
 
+    private let database: SQLiteDatabase
     private let messageRepository: MessageRepository
     private let operationRepository: OperationQueueRepository
     public weak var transportDelegate: MeshTransportDelegate?
@@ -42,6 +43,7 @@ public final class MeshEngine: @unchecked Sendable {
         networkAnalyzer: NetworkAnalyzer? = nil,
         peerTrustManager: PeerTrustManager? = nil
     ) {
+        self.database = database
         self.localNodeId = localNodeId.lowercased()
         self.localDisplayName = localDisplayName
 
@@ -107,7 +109,7 @@ public final class MeshEngine: @unchecked Sendable {
             ))
         }
 
-        let contractOp = ContractV1.Operation(
+        var contractOp = ContractV1.Operation(
             schemaVersion: 1,
             operationId: operationId.lowercased(),
             originNodeId: localNodeId,
@@ -120,6 +122,13 @@ public final class MeshEngine: @unchecked Sendable {
             payload: opPayload
         )
 
+        if message.type == .sos {
+            do {
+                if let raw=try database.gatewayRows("SELECT operation_json FROM gateway_upload_queue WHERE operation_id=?",[operationId.lowercased()]).first?.first {
+                    contractOp=try JSONDecoder().decode(ContractV1.Operation.self,from:Data(raw.utf8))
+                }
+            } catch {onDiagnosticLog?(.error,"Stored canonical operation unavailable; retry paused");return false}
+        }
         let envelope = ContractV1.Envelope(
             version: 1,
             packetId: UUID().uuidString.lowercased(),
@@ -153,6 +162,11 @@ public final class MeshEngine: @unchecked Sendable {
             syncStatus: .queued
         )
 
+        do { try database.captureGatewayEnvelope(envelope) }
+        catch {
+            onDiagnosticLog?(.error, "Canonical gateway persistence failed; no transmission attempted")
+            return false
+        }
         // Enqueue in priority queue
         messageQueue.enqueue(operation: offgridOp, message: message, priority: priority)
 
@@ -225,6 +239,8 @@ public final class MeshEngine: @unchecked Sendable {
                 explanation: "Suppressed duplicate packet [\(envelope.packetId.prefix(8))] for op [\(sanitizedOp.operationId.prefix(8))]"
             )
 
+            do { try database.captureGatewayEnvelope(envelope) }
+            catch { onDiagnosticLog?(.error, "Duplicate gateway identity or storage failure; no ACK"); return }
             // Idempotent ACK to prevent sender retransmitting indefinitely
             sendAppropriateAck(for: sanitizedOp, packetId: envelope.packetId, toPeer: fromPeer, envelope: envelope)
             return
@@ -285,12 +301,12 @@ public final class MeshEngine: @unchecked Sendable {
             timestamp: Date(timeIntervalSince1970: Double(sanitizedOp.timestamp) / 1000.0),
             lamportClock: sanitizedOp.lamportClock,
             payloadJson: payloadJsonString,
-            syncStatus: isDestination ? .gatewaySynced : .peerRelayed
+            syncStatus: .peerRelayed
         )
 
         // Atomically persist message & operation
         do {
-            try messageRepository.saveMessageWithOperation(message: receivedMessage, operation: offgridOp)
+            try database.saveMessageWithOperation(message: receivedMessage, operation: offgridOp, gatewayEnvelope: envelope)
             deduplicationManager.markProcessed(
                 packetId: envelope.packetId,
                 operationId: sanitizedOp.operationId,
@@ -312,7 +328,7 @@ public final class MeshEngine: @unchecked Sendable {
 
         // Update UI feeds
         if receivedMessage.type == .sos {
-            onDiagnosticLog?(.rx, "EMERGENCY SOS RECEIVED from \(fromPeer) via hop \(envelope.hopCount + 1): \"\(receivedMessage.content)\"")
+            onDiagnosticLog?(.rx, "Emergency SOS persisted (hop \(envelope.hopCount + 1))")
             onSOSReceived?(receivedMessage)
         } else {
             onDiagnosticLog?(.rx, "Received & persisted message [\(receivedMessage.id.prefix(8))] from \(fromPeer)")
@@ -354,14 +370,18 @@ public final class MeshEngine: @unchecked Sendable {
             targetEntityId = ack.operationId
         }
 
+        let alreadyCommitted = operationRepository.getOperation(byOperationId: ack.operationId)?.syncStatus == .gatewaySynced
         switch ack.stage {
         case .peerStored:
+            if alreadyCommitted { break }
             operationRepository.markStatus(operationId: ack.operationId, status: .peerRelayed)
             messageRepository.updateStatus(id: targetEntityId, status: .relayed)
         case .backendCommitted:
-            operationRepository.markStatus(operationId: ack.operationId, status: .gatewaySynced)
-            messageRepository.updateStatus(id: targetEntityId, status: .synced)
+            // A radio peer may relay a claimed backend ACK, but cannot attest
+            // that our server signed it. Only authenticated HTTP confirms commit.
+            onDiagnosticLog?(.ack, "Relayed backend ACK observed; local commitment requires authenticated backend evidence")
         case .recipientAcknowledged:
+            if alreadyCommitted { break }
             operationRepository.markStatus(operationId: ack.operationId, status: .peerRelayed)
             messageRepository.updateStatus(id: targetEntityId, status: .delivered)
             // Destination reached: remove from pending retry queue

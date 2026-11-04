@@ -21,7 +21,6 @@
 		7E988A30BB03DD8C836E7549 /* Networking/Multipeer/MultipeerSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B532D35C3C6F6758DB8CA38 /* Networking/Multipeer/MultipeerSessionManager.swift */; };
 		80CDD2E5C33D85828BDACFA7 /* Features/Network/NetworkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B603079B5BA465321D181BC7 /* Features/Network/NetworkViewModel.swift */; };
 		83090BA34C005D753903F3DB /* Data/Models/OFFGRIDMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F0CB9661A6326083C757D44 /* Data/Models/OFFGRIDMessage.swift */; };
-		9490F3E460C785BA14AF7C3B /* Sync/SyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41160E6A1E3B1B15E1014A6 /* Sync/SyncEngine.swift */; };
 		994775350B3B6DD92F93F460 /* Networking/Relay/RelayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97D51BB0B68DFEA8FC0DE81D /* Networking/Relay/RelayManager.swift */; };
 		AB19F09C72C2B3AC0F98E681 /* Data/Models/OFFGRIDOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A452067E4953678E9DD7D1DE /* Data/Models/OFFGRIDOperation.swift */; };
 		B2F0E08EA75784D0D28231D3 /* Networking/Transport/TransportManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4248751432B90BABFE36A0A /* Networking/Transport/TransportManager.swift */; };
@@ -45,6 +44,9 @@
 		B1B2C3D4E5F6000300000005 /* Networking/Mesh/NetworkAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000300000005 /* Networking/Mesh/NetworkAnalyzer.swift */; };
 		B1B2C3D4E5F6000300000006 /* Networking/Mesh/PeerTrustManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000300000006 /* Networking/Mesh/PeerTrustManager.swift */; };
 		B1B2C3D4E5F6000300000007 /* Networking/Routing/RoutingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000300000007 /* Networking/Routing/RoutingEngine.swift */; };
+		BADD20000000000000000000 /* Sync/GatewayQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADD10000000000000000000; };
+		BADD20000000000000000001 /* Sync/GatewayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADD10000000000000000001; };
+		BADD20000000000000000002 /* Features/Sync/GatewaySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADD10000000000000000002; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -74,7 +76,6 @@
 		EAF0443E4288837FA26923C8 /* Networking/Discovery/PeerDiscoveryProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Discovery/PeerDiscoveryProtocol.swift; sourceTree = "<group>"; };
 		F172F54D1623EAC96196CC89 /* App/OFFGRIDApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/OFFGRIDApp.swift; sourceTree = "<group>"; };
 		F3BA2F05FCF2A8CC0F5F63CF /* Networking/Bluetooth/BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Bluetooth/BLEManager.swift; sourceTree = "<group>"; };
-		F41160E6A1E3B1B15E1014A6 /* Sync/SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sync/SyncEngine.swift; sourceTree = "<group>"; };
 		F6329841ABBF95E9ADC57841 /* Features/Chat/ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Chat/ChatViewModel.swift; sourceTree = "<group>"; };
 		FC6BD1C77E169C0A722E4D11 /* Protocol/PacketModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocol/PacketModels.swift; sourceTree = "<group>"; };
 		FE72009CEE54F9343532FB69 /* Features/Files/FilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Files/FilesView.swift; sourceTree = "<group>"; };
@@ -88,6 +89,9 @@
 		A1B2C3D4E5F6000300000005 /* Networking/Mesh/NetworkAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Mesh/NetworkAnalyzer.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6000300000006 /* Networking/Mesh/PeerTrustManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Mesh/PeerTrustManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6000300000007 /* Networking/Routing/RoutingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/Routing/RoutingEngine.swift; sourceTree = "<group>"; };
+		BADD10000000000000000000 /* Sync/GatewayQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sync/GatewayQueue.swift; sourceTree = "<group>"; };
+		BADD10000000000000000001 /* Sync/GatewayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sync/GatewayManager.swift; sourceTree = "<group>"; };
+		BADD10000000000000000002 /* Features/Sync/GatewaySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Sync/GatewaySettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -128,7 +132,9 @@
 				F3BA2F05FCF2A8CC0F5F63CF /* Networking/Bluetooth/BLEManager.swift */,
 				C4248751432B90BABFE36A0A /* Networking/Transport/TransportManager.swift */,
 				97D51BB0B68DFEA8FC0DE81D /* Networking/Relay/RelayManager.swift */,
-				F41160E6A1E3B1B15E1014A6 /* Sync/SyncEngine.swift */,
+				BADD10000000000000000002 /* Features/Sync/GatewaySettingsView.swift */,
+				BADD10000000000000000001 /* Sync/GatewayManager.swift */,
+				BADD10000000000000000000 /* Sync/GatewayQueue.swift */,
 				FC6BD1C77E169C0A722E4D11 /* Protocol/PacketModels.swift */,
 				0699CA51ED6D595EEDF5FDB1 /* Security/KeychainHelper.swift */,
 				A1B2C3D4E5F6000100000001 /* Protocol/ContractV1Models.swift */,
@@ -250,7 +256,9 @@
 				0B099A0ECD662A4B58B5BE61 /* Networking/Bluetooth/BLEManager.swift in Sources */,
 				B2F0E08EA75784D0D28231D3 /* Networking/Transport/TransportManager.swift in Sources */,
 				994775350B3B6DD92F93F460 /* Networking/Relay/RelayManager.swift in Sources */,
-				9490F3E460C785BA14AF7C3B /* Sync/SyncEngine.swift in Sources */,
+				BADD20000000000000000002 /* Features/Sync/GatewaySettingsView.swift in Sources */,
+				BADD20000000000000000001 /* Sync/GatewayManager.swift in Sources */,
+				BADD20000000000000000000 /* Sync/GatewayQueue.swift in Sources */,
 				C26E3BCF8D9A2FC7799CDE18 /* Protocol/PacketModels.swift in Sources */,
 				09404D0272B669FEC3892E7D /* Security/KeychainHelper.swift in Sources */,
 				B1B2C3D4E5F6000100000001 /* Protocol/ContractV1Models.swift in Sources */,
