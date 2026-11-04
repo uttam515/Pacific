@@ -17,6 +17,7 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate, Me
     public let localNodeId: String
     public let localDeviceName: String
     public let meshEngine: MeshEngine
+    public let gatewayManager: GatewayManager
 
     private nonisolated let multipeerManager: MultipeerSessionManager
     private var bleManager: BLEManager?
@@ -33,6 +34,7 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate, Me
         self.operationRepository = operationRepository
         let nodeId = KeychainHelper.shared.getOrCreateNodeId()
         self.localNodeId = nodeId
+        self.gatewayManager = GatewayManager(nodeId:nodeId)
         let devName = UIDevice.current.name
         self.localDeviceName = devName
 
@@ -77,6 +79,7 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate, Me
     }
 
     public func startAllTransports() {
+        gatewayManager.start()
         multipeerManager.start()
         isAdvertising = multipeerManager.isAdvertising
         isBrowsing = multipeerManager.isBrowsing
@@ -85,6 +88,7 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate, Me
     }
 
     public func stopAllTransports() {
+        gatewayManager.stop()
         multipeerManager.stop()
         isAdvertising = false
         isBrowsing = false
@@ -130,11 +134,13 @@ public final class TransportManager: ObservableObject, PeerDiscoveryDelegate, Me
                 if !wasConnected {
                     self.connectedPeers.append(peer)
                     self.meshEngine.handlePeerConnected(peer: peer)
+                    self.gatewayManager.setMeshConnected(true)
                 }
             } else {
                 if wasConnected {
                     self.connectedPeers.removeAll { $0.id == peer.id }
                     self.meshEngine.handlePeerDisconnected(peerId: peer.id)
+                    self.gatewayManager.setMeshConnected(!self.connectedPeers.isEmpty)
                 }
             }
 

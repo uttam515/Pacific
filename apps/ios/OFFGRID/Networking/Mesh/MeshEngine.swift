@@ -19,6 +19,7 @@ public final class MeshEngine: @unchecked Sendable {
     public let networkAnalyzer: NetworkAnalyzer
     public let peerTrustManager: PeerTrustManager
 
+    private let database: SQLiteDatabase
     private let messageRepository: MessageRepository
     private let operationRepository: OperationQueueRepository
     public weak var transportDelegate: MeshTransportDelegate?
@@ -42,6 +43,7 @@ public final class MeshEngine: @unchecked Sendable {
         networkAnalyzer: NetworkAnalyzer? = nil,
         peerTrustManager: PeerTrustManager? = nil
     ) {
+        self.database = database
         self.localNodeId = localNodeId.lowercased()
         self.localDisplayName = localDisplayName
 
@@ -153,6 +155,11 @@ public final class MeshEngine: @unchecked Sendable {
             syncStatus: .queued
         )
 
+        do { try database.captureGatewayEnvelope(envelope) }
+        catch {
+            onDiagnosticLog?(.error, "Canonical gateway persistence failed; no transmission attempted")
+            return false
+        }
         // Enqueue in priority queue
         messageQueue.enqueue(operation: offgridOp, message: message, priority: priority)
 
@@ -225,6 +232,8 @@ public final class MeshEngine: @unchecked Sendable {
                 explanation: "Suppressed duplicate packet [\(envelope.packetId.prefix(8))] for op [\(sanitizedOp.operationId.prefix(8))]"
             )
 
+            do { try database.captureGatewayEnvelope(envelope) }
+            catch { onDiagnosticLog?(.error, "Duplicate gateway identity or storage failure; no ACK"); return }
             // Idempotent ACK to prevent sender retransmitting indefinitely
             sendAppropriateAck(for: sanitizedOp, packetId: envelope.packetId, toPeer: fromPeer, envelope: envelope)
             return
@@ -285,12 +294,12 @@ public final class MeshEngine: @unchecked Sendable {
             timestamp: Date(timeIntervalSince1970: Double(sanitizedOp.timestamp) / 1000.0),
             lamportClock: sanitizedOp.lamportClock,
             payloadJson: payloadJsonString,
-            syncStatus: isDestination ? .gatewaySynced : .peerRelayed
+            syncStatus: .peerRelayed
         )
 
         // Atomically persist message & operation
         do {
-            try messageRepository.saveMessageWithOperation(message: receivedMessage, operation: offgridOp)
+            try database.saveMessageWithOperation(message: receivedMessage, operation: offgridOp, gatewayEnvelope: envelope)
             deduplicationManager.markProcessed(
                 packetId: envelope.packetId,
                 operationId: sanitizedOp.operationId,
@@ -354,14 +363,17 @@ public final class MeshEngine: @unchecked Sendable {
             targetEntityId = ack.operationId
         }
 
+        let alreadyCommitted = operationRepository.getOperation(byOperationId: ack.operationId)?.syncStatus == .gatewaySynced
         switch ack.stage {
         case .peerStored:
+            if alreadyCommitted { break }
             operationRepository.markStatus(operationId: ack.operationId, status: .peerRelayed)
             messageRepository.updateStatus(id: targetEntityId, status: .relayed)
         case .backendCommitted:
             operationRepository.markStatus(operationId: ack.operationId, status: .gatewaySynced)
             messageRepository.updateStatus(id: targetEntityId, status: .synced)
         case .recipientAcknowledged:
+            if alreadyCommitted { break }
             operationRepository.markStatus(operationId: ack.operationId, status: .peerRelayed)
             messageRepository.updateStatus(id: targetEntityId, status: .delivered)
             // Destination reached: remove from pending retry queue

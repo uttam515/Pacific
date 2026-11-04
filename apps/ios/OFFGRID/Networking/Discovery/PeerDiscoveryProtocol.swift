@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 public enum TransportType: String, Sendable {
     case multipeer = "Multipeer"

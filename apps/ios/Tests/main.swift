@@ -11,8 +11,9 @@ let meshResult = meshTests.runAllTests()
 let fixtureTests = ContractV1FixtureTests()
 let fixtureResult = fixtureTests.runAllTests()
 
-let totalPassed = persistenceResult.passed + meshResult.passed + fixtureResult.passed
-let totalTests = persistenceResult.total + meshResult.total + fixtureResult.total
+let gatewayResult = GatewayQueueTests().runAllTests()
+let totalPassed = gatewayResult.passed + persistenceResult.passed + meshResult.passed + fixtureResult.passed
+let totalTests = gatewayResult.total + persistenceResult.total + meshResult.total + fixtureResult.total
 
 print("\n===========================================")
 print("  OFFGRID iOS TEST EXECUTION BREAKDOWN     ")

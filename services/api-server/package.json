@@ -5,18 +5,31 @@
   "description": "OFFGRID Central API Server & WebSocket Hub (Engineer 1)",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "node --import tsx --watch src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "start": "node dist/index.js",
     "lint": "tsc --noEmit",
-    "test": "echo 'API server tests ready'"
+    "test": "node --import tsx --test tests/unit.test.ts",
+    "migrate": "node --import tsx src/cli.ts migrate",
+    "provision": "node --import tsx src/cli.ts provision",
+    "test:integration": "node --import tsx --test tests/integration.test.ts"
   },
   "dependencies": {
     "@offgrid/protocol": "workspace:*",
-    "@offgrid/shared-types": "workspace:*"
+    "@offgrid/shared-types": "workspace:*",
+    "express": "^4.21.2",
+    "pg": "^8.13.1",
+    "ws": "^8.18.0",
+    "ajv": "^8.17.1"
   },
   "devDependencies": {
-    "typescript": "^5.4.0"
-  }
+    "typescript": "^5.4.0",
+    "@types/node": "^22.0.0",
+    "@types/express": "^4.17.21",
+    "@types/pg": "^8.11.10",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.20.0"
+  },
+  "type": "module"
 }

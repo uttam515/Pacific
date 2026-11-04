@@ -131,6 +131,20 @@ public final class SQLiteDatabase: @unchecked Sendable {
                 print("[SQLiteDatabase] Migration v2 failed: \(error)")
             }
         }
+        if getUserVersion() < 3 {
+            do {
+                try performTransaction {
+                    try executeOrThrow(sql: """
+                    CREATE TABLE IF NOT EXISTS gateway_upload_queue (
+                      operation_id TEXT PRIMARY KEY, operation_json TEXT NOT NULL, observation_json TEXT,
+                      state TEXT NOT NULL DEFAULT 'PENDING', attempts INTEGER NOT NULL DEFAULT 0,
+                      next_attempt REAL NOT NULL DEFAULT 0, last_error TEXT, ack_json TEXT
+                    );
+                    PRAGMA user_version = 3;
+                    """)
+                }
+            } catch { print("[SQLiteDatabase] Gateway queue migration failed; uploads disabled until repaired") }
+        }
         createMeshTables()
     }
 
@@ -362,10 +376,10 @@ public final class SQLiteDatabase: @unchecked Sendable {
 
     public func performTransaction<T>(_ block: () throws -> T) throws -> T {
         return try runOnQueue {
-            execute(sql: "BEGIN IMMEDIATE TRANSACTION;")
+            try executeOrThrow(sql: "BEGIN IMMEDIATE TRANSACTION;")
             do {
                 let result = try block()
-                execute(sql: "COMMIT TRANSACTION;")
+                try executeOrThrow(sql: "COMMIT TRANSACTION;")
                 return result
             } catch {
                 execute(sql: "ROLLBACK TRANSACTION;")
@@ -377,13 +391,15 @@ public final class SQLiteDatabase: @unchecked Sendable {
     // MARK: - Atomic Message + Operation Persistence
 
     @discardableResult
-    public func saveMessageWithOperation(message: OFFGRIDMessage, operation: OFFGRIDOperation) throws -> OperationInsertionResult {
+    public func saveMessageWithOperation(message: OFFGRIDMessage, operation: OFFGRIDOperation, gatewayEnvelope: ContractV1.Envelope? = nil) throws -> OperationInsertionResult {
         return try performTransaction {
             insertMessageInternal(message)
             if let fault = SQLiteDatabase.inboundPersistenceFaultInjection {
                 try fault()
             }
-            return try insertOperationInternal(operation)
+            let result = try insertOperationInternal(operation)
+            if let envelope = gatewayEnvelope { try captureGatewayEnvelope(envelope) }
+            return result
         }
     }
 
@@ -888,4 +904,54 @@ public final class SQLiteDatabase: @unchecked Sendable {
             return events
         }
     }
+    // Canonical queue is independent of peer delivery status.
+    public func gatewayExecute(_ sql: String, _ values: [String] = []) throws {
+        try runOnQueue {
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { throw GatewayFailure.storage }
+            defer { sqlite3_finalize(stmt) }
+            for (i,v) in values.enumerated() {
+                sqlite3_bind_text(stmt, Int32(i+1), v, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            }
+            guard sqlite3_step(stmt) == SQLITE_DONE else { throw GatewayFailure.storage }
+        }
+    }
+    public func gatewayRows(_ sql: String, _ values: [String] = []) throws -> [[String]] {
+        try runOnQueue {
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { throw GatewayFailure.storage }
+            defer { sqlite3_finalize(stmt) }
+            for (i,v) in values.enumerated() {
+                sqlite3_bind_text(stmt, Int32(i+1), v, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            }
+            var rows = [[String]]()
+            while true {
+                let result=sqlite3_step(stmt)
+                if result == SQLITE_DONE { break }
+                guard result == SQLITE_ROW else { throw GatewayFailure.storage }
+                rows.append((0..<sqlite3_column_count(stmt)).map { col in
+                    sqlite3_column_text(stmt,col).map { String(cString:$0) } ?? ""
+                })
+            }
+            return rows
+        }
+    }
+    public func captureGatewayEnvelope(_ envelope: ContractV1.Envelope) throws {
+        guard case .syncOp(let op) = envelope.payload, op.entityType == .sos else { return }
+        try ContractV1Validator.validateOperation(op)
+        let encoder=JSONEncoder(); encoder.outputFormatting=[.sortedKeys]
+        let data=try encoder.encode(op)
+        guard let json=String(data:data,encoding:.utf8) else { throw GatewayFailure.storage }
+        try runOnQueue {
+            let existing=try gatewayRows("SELECT operation_json FROM gateway_upload_queue WHERE operation_id=?",[op.operationId])
+            if let old=existing.first?.first {
+                guard old == json else { throw GatewayFailure.identityReuse }
+                return
+            }
+            let observation=GatewayObservation(operationId:op.operationId,packetId:envelope.packetId,hopCount:envelope.hopCount,receivedAt:Int64(Date().timeIntervalSince1970*1000))
+            let report=String(data:try encoder.encode(observation),encoding:.utf8)!
+            try gatewayExecute("INSERT INTO gateway_upload_queue(operation_id,operation_json,observation_json) VALUES(?,?,?)",[op.operationId,json,report])
+        }
+    }
+
 }
