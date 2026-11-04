@@ -7,14 +7,18 @@ public struct GatewayConfiguration: Codable {
     public let baseURL: URL
     public let bearerCredential: String
     public let allowLocalHTTP: Bool
+    public var internetProbeURL: URL? = nil
     public func validate(existingNodeId:String) throws {
         guard nodeId==existingNodeId,ContractV1Validator.isValidUUID(nodeId),
               bearerCredential.range(of:"^[A-Za-z0-9_-]{43}$",options:.regularExpression) != nil,
               baseURL.user==nil,baseURL.password==nil,baseURL.query==nil,baseURL.fragment==nil,
               baseURL.path.isEmpty || baseURL.path=="/",let host=baseURL.host else { throw GatewayFailure.invalidConfiguration }
+        if let probe=internetProbeURL {
+            guard probe.scheme=="https",probe.host != nil,probe.user==nil,probe.password==nil,probe.query==nil,probe.fragment==nil else {throw GatewayFailure.invalidConfiguration}
+        }
         if baseURL.scheme=="https" { return }
         let parts=host.split(separator:".").compactMap{Int($0)}
-        let privateIPv4=parts.count==4 && parts.allSatisfy{(0...255).contains($0)} && (parts[0]==10 || (parts[0]==192 && parts[1]==168) || (parts[0]==172 && (16...31).contains(parts[1])))
+        let privateIPv4=host.split(separator:".").count==4 && parts.count==4 && parts.allSatisfy{(0...255).contains($0)} && (parts[0]==10 || (parts[0]==192 && parts[1]==168) || (parts[0]==172 && (16...31).contains(parts[1])))
         guard allowLocalHTTP,baseURL.scheme=="http",privateIPv4 || host=="localhost" || host=="127.0.0.1" || host.hasSuffix(".local") else { throw GatewayFailure.invalidConfiguration }
     }
 }
@@ -45,9 +49,10 @@ public struct GatewayConfiguration: Codable {
         monitor.start(queue:DispatchQueue(label:"org.offgrid.gateway.path"))
         refreshCounts()
     }
-    public func configure(baseURL:String,credential:String,allowLocalHTTP:Bool) throws {
+    public func configure(baseURL:String,credential:String,allowLocalHTTP:Bool,internetProbe:String="") throws {
         guard let url=URL(string:baseURL) else { throw GatewayFailure.invalidConfiguration }
-        let c=GatewayConfiguration(nodeId:nodeId,baseURL:url,bearerCredential:credential,allowLocalHTTP:allowLocalHTTP)
+        var c=GatewayConfiguration(nodeId:nodeId,baseURL:url,bearerCredential:credential,allowLocalHTTP:allowLocalHTTP)
+        if !internetProbe.isEmpty {guard let probe=URL(string:internetProbe) else {throw GatewayFailure.invalidConfiguration};c.internetProbeURL=probe}
         try c.validate(existingNodeId:nodeId)
         guard KeychainHelper.shared.saveDeviceOnly(key:"gateway-config-v1",data:try JSONEncoder().encode(c)) else { throw GatewayFailure.storage }
         configuration=c;status="Credential saved; checking backend"
@@ -77,6 +82,16 @@ public struct GatewayConfiguration: Codable {
         let (data,response)=try await session.data(for:req)
         guard let r=response as? HTTPURLResponse,r.url?.host==c.baseURL.host,r.url?.scheme==c.baseURL.scheme else {throw GatewayFailure.invalidResponse}
         return (data,r.statusCode)
+    }
+    // A reachable LAN backend does not prove general internet access. Only an
+    // explicitly configured external HTTPS probe yields a positive report.
+    private func probeInternet() async -> Bool? {
+        guard let url=configuration?.internetProbeURL else {return nil}
+        var req=URLRequest(url:url);req.timeoutInterval=4;req.cachePolicy = .reloadIgnoringLocalCacheData
+        do {
+            let (data,response)=try await session.data(for:req)
+            return (response as? HTTPURLResponse)?.statusCode==200 && response.url==url && String(data:data,encoding:.utf8)?.trimmingCharacters(in:.whitespacesAndNewlines)=="OFFGRID_INTERNET_OK_V1"
+        } catch {return false}
     }
     public func sync() async {
         guard active,!running,configuration != nil else {refreshCounts();return}
@@ -113,7 +128,8 @@ public struct GatewayConfiguration: Codable {
                 if code==200 {try queue.observed(id)}
             }
             let c=try queue.counts()
-            let heartbeat:[String:Any]=["schemaVersion":1,"nodeId":nodeId,"reportedAt":Int64(Date().timeIntervalSince1970*1000),"meshConnected":meshConnected,"internetReachable":backendReachable,"pendingUploads":c.pending,"failedUploads":c.failed]
+            let internet=await probeInternet()
+            let heartbeat:[String:Any]=["schemaVersion":1,"nodeId":nodeId,"reportedAt":Int64(Date().timeIntervalSince1970*1000),"meshConnected":meshConnected,"internetReachable":internet.map { NSNumber(value:$0) } as Any? ?? NSNull(),"pendingUploads":c.pending,"failedUploads":c.failed]
             let (_,heartbeatCode)=try await request("api/v1/gateway/heartbeat",body:try JSONSerialization.data(withJSONObject:heartbeat))
             guard heartbeatCode==200 else {throw GatewayFailure.invalidResponse}
             status=c.failed>0 ? "Some SOS uploads need review; retained locally":"Backend synchronized; gateway available while app is active"

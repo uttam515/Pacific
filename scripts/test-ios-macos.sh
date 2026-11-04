@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 out=$(mktemp -d)
 trap 'rm -rf "$out"' EXIT
-swiftc -swift-version 5 -o "$out/offgrid-tests" \
+swiftc -D DEBUG -swift-version 5 -o "$out/offgrid-tests" \
  apps/ios/OFFGRID/Protocol/*.swift \
  apps/ios/OFFGRID/Data/Models/*.swift \
  apps/ios/OFFGRID/Data/Database/*.swift \

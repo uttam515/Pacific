@@ -7,14 +7,11 @@ public final class SyncViewModel: ObservableObject {
     @Published public var isSyncing: Bool = false
 
     private let operationRepository: OperationQueueRepository
-    private let syncEngine: SyncEngine
 
     public init(
-        operationRepository: OperationQueueRepository = OperationQueueRepository(),
-        syncEngine: SyncEngine = SyncEngine()
+        operationRepository: OperationQueueRepository = OperationQueueRepository()
     ) {
         self.operationRepository = operationRepository
-        self.syncEngine = syncEngine
         loadOperations()
     }
 
@@ -22,10 +19,10 @@ public final class SyncViewModel: ObservableObject {
         self.pendingOperations = operationRepository.getPendingOperations()
     }
 
-    public func triggerManualSync() {
+    public func triggerManualSync(using gateway: GatewayManager) {
         isSyncing = true
         Task {
-            await syncEngine.syncPendingOperations()
+            await gateway.sync()
             loadOperations()
             isSyncing = false
         }

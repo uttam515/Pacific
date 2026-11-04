@@ -5,8 +5,9 @@ public struct GatewaySettingsView: View {
     @EnvironmentObject var transport:TransportManager
     @State private var url=""
     @State private var credential=""
+    @State private var probe=""
     @State private var localHTTP=false
-    @State private var error=""
+    @State private var validationMessage=""
     public var body: some View {
         Form {
             Section("Existing installation identity") {
@@ -15,13 +16,14 @@ public struct GatewaySettingsView: View {
             }
             Section("Private backend configuration") {
                 TextField("https://backend.example",text:$url).textInputAutocapitalization(.never).autocorrectionDisabled()
+                TextField("Optional public HTTPS probe URL",text:$probe).textInputAutocapitalization(.never).autocorrectionDisabled()
                 SecureField("Privately provisioned bearer credential",text:$credential).textInputAutocapitalization(.never).autocorrectionDisabled()
                 Toggle("Allow HTTP on trusted local network",isOn:$localHTTP)
                 Button("Save credential on this device") {
-                    do {try gateway.configure(baseURL:url.trimmingCharacters(in:.whitespacesAndNewlines),credential:credential.trimmingCharacters(in:.whitespacesAndNewlines),allowLocalHTTP:localHTTP);credential="";error="";Task{await gateway.sync()}}
-                    catch {error="Invalid URL, credential, or secure-storage failure. Use the existing installation ID when provisioning."}
+                    do {try gateway.configure(baseURL:url.trimmingCharacters(in:.whitespacesAndNewlines),credential:credential.trimmingCharacters(in:.whitespacesAndNewlines),allowLocalHTTP:localHTTP,internetProbe:probe.trimmingCharacters(in:.whitespacesAndNewlines));credential="";validationMessage="";Task{await gateway.sync()}}
+                    catch {validationMessage="Invalid URL, credential, or secure-storage failure. Use the existing installation ID when provisioning."}
                 }
-                if !error.isEmpty {Text(error).foregroundColor(.red)}
+                if !validationMessage.isEmpty {Text(validationMessage).foregroundColor(.red)}
             }
             Section("SOS upload queue") {
                 Text(gateway.status)

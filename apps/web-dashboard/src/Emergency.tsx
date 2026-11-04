@@ -1,86 +1,1495 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { Activity, ArrowUpRight, Check, ChevronRight, CircleHelp, Crosshair, LogOut, MapPin, Radio, RefreshCw, Shield, Siren, Users, X, ZoomIn, ZoomOut } from 'lucide-react';
-import './emergency.css';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import {
+  Activity,
+  ArrowUpRight,
+  Check,
+  ChevronRight,
+  CircleHelp,
+  Crosshair,
+  LogOut,
+  MapPin,
+  Radio,
+  RefreshCw,
+  Shield,
+  Siren,
+  Users,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
+import "./emergency.css";
+import { landPath } from "./map-land";
 
-type Incident={incident_id:string;operation_id:string;origin_node_id:string;first_gateway_id:string|null;received_at:string;status:string;revision:number;authority_id:string|null;responder_id:string|null;operation:{timestamp:number;payload:{text:string;category:string;location:{label:string;latitude?:number;longitude?:number}}}};
-type Authority={authority_id:string;name:string;category:string;contact:string;active:boolean;revision:number};
-type Responder={responder_id:string;name:string;contact:string;authority_id:string;active:boolean;revision:number};
-type Event={event_id:string;incident_id:string|null;kind:string;occurred_at:string;actor_id:string;details:Record<string,unknown>};
-type Gateway={node_id:string;display_name:string;observed_at:string|null;body:{meshConnected:boolean;internetReachable:boolean;pendingUploads:number;failedUploads:number}|null;backendConnected:boolean;successful_uploads:number;last_successful_upload:string|null};
-type Snapshot={schemaVersion:1;observedAt:number;incidents:Incident[];authorities:Authority[];responders:Responder[];gateways:Gateway[];events:Event[];counts:{status:string;count:number}[];incidentLimit:number};
-type Detail={incident:Incident;events:Event[];notifications:{notification_id:string;status:string;submitted_at:string}[];uploads:{node_id:string;attempts:number;observation:{hopCount:number;packetId:string}|null}[]};
-type Command={schemaVersion:1;commandId:string;action:string;subjectId:string;expectedRevision:number;data:Record<string,unknown>};
-const short=(id:string|null)=>id?id.slice(0,8).toUpperCase():'Not reported';
-const label=(s:string)=>s.toLowerCase().replaceAll('_',' ');
-const time=(n:string|number|null)=>n?new Date(Number(n)).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}):'Not reported';
-const closed=(s:string)=>['RESOLVED','CANCELLED'].includes(s);
-const uuid=()=>{if(crypto.randomUUID)return crypto.randomUUID();const a=crypto.getRandomValues(new Uint8Array(16));a[6]=(a[6]&15)|64;a[8]=(a[8]&63)|128;return [...a].map((v,i)=>([4,6,8,10].includes(i)?'-':'')+v.toString(16).padStart(2,'0')).join('')};
-class HTTPError extends Error{constructor(public status:number,message:string){super(message)}}
-async function request<T>(path:string,body?:unknown):Promise<T>{
- const response=await fetch('/api/v1'+path,{credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},...(body?{method:'POST',body:JSON.stringify(body)}:{})});
- const data=await response.json();if(!response.ok)throw new HTTPError(response.status,data.error?.message||'Request failed');return data;
+type Incident = {
+  incident_id: string;
+  operation_id: string;
+  origin_node_id: string;
+  first_gateway_id: string | null;
+  received_at: string;
+  status: string;
+  revision: number;
+  authority_id: string | null;
+  responder_id: string | null;
+  operation: {
+    timestamp: number;
+    payload: {
+      text: string;
+      category: string;
+      location: { label: string; latitude?: number; longitude?: number };
+    };
+  };
+};
+type Authority = {
+  authority_id: string;
+  name: string;
+  category: string;
+  contact: string;
+  active: boolean;
+  revision: number;
+};
+type Responder = {
+  responder_id: string;
+  name: string;
+  contact: string;
+  authority_id: string;
+  active: boolean;
+  revision: number;
+};
+type Event = {
+  event_id: string;
+  incident_id: string | null;
+  kind: string;
+  occurred_at: string;
+  actor_id: string;
+  details: Record<string, unknown>;
+};
+type Gateway = {
+  node_id: string;
+  display_name: string;
+  observed_at: string | null;
+  body: {
+    meshConnected: boolean;
+    internetReachable: boolean | null;
+    pendingUploads: number;
+    failedUploads: number;
+  } | null;
+  backendConnected: boolean;
+  successful_uploads: number;
+  last_successful_upload: string | null;
+};
+type Snapshot = {
+  schemaVersion: 1;
+  observedAt: number;
+  incidents: Incident[];
+  authorities: Authority[];
+  responders: Responder[];
+  gateways: Gateway[];
+  events: Event[];
+  counts: { status: string; count: number }[];
+  incidentLimit: number;
+  nextCursor: string | null;
+};
+type Detail = {
+  incident: Incident;
+  events: Event[];
+  notifications: {
+    notification_id: string;
+    status: string;
+    submitted_at: string;
+  }[];
+  uploads: {
+    node_id: string;
+    attempts: number;
+    observation: { hopCount: number; packetId: string } | null;
+  }[];
+};
+type Command = {
+  schemaVersion: 1;
+  commandId: string;
+  action: string;
+  subjectId: string;
+  expectedRevision: number;
+  data: Record<string, unknown>;
+};
+const short = (id: string | null) =>
+  id ? id.slice(0, 8).toUpperCase() : "Not reported";
+const label = (s: string) => s.toLowerCase().replaceAll("_", " ");
+const time = (n: string | number | null) =>
+  n
+    ? new Date(Number(n)).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    : "Not reported";
+const closed = (s: string) => ["RESOLVED", "CANCELLED"].includes(s);
+const uuid = () => {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  const a = crypto.getRandomValues(new Uint8Array(16));
+  a[6] = (a[6] & 15) | 64;
+  a[8] = (a[8] & 63) | 128;
+  return [...a]
+    .map(
+      (v, i) =>
+        ([4, 6, 8, 10].includes(i) ? "-" : "") +
+        v.toString(16).padStart(2, "0"),
+    )
+    .join("");
+};
+class HTTPError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
 }
-export default function Emergency(){
- const [data,setData]=useState<Snapshot|null>(null),[view,setView]=useState('Operations'),[selected,setSelected]=useState<string|null>(null),[detail,setDetail]=useState<Detail|null>(null);
- const [error,setError]=useState(''),[login,setLogin]=useState(false),[connected,setConnected]=useState(false),[stale,setStale]=useState(true),[busy,setBusy]=useState(false),[filter,setFilter]=useState('ACTIVE'),[search,setSearch]=useState('');
- const [authority,setAuthority]=useState(''),[responder,setResponder]=useState(''),[note,setNote]=useState(''),[pendingCommand,setPendingCommand]=useState<Command|null>(null);
- const refreshing=useRef(false),detailId=useRef<string|null>(null),mounted=useRef(true);
- const refresh=useCallback(async()=>{if(refreshing.current)return;refreshing.current=true;try{const s=await request<Snapshot>('/emergency/snapshot');if(s.schemaVersion!==1)throw new Error('Unsupported snapshot');if(!mounted.current)return;setData(s);setStale(false);setLogin(false);if(detailId.current){const d=await request<Detail>('/incidents/'+detailId.current);if(d.incident.incident_id===detailId.current)setDetail(d);}}catch(e){setStale(true);if(e instanceof HTTPError&&e.status===401){setLogin(true);setData(null);setDetail(null)}else setError(e instanceof Error?e.message:'Refresh failed')}finally{refreshing.current=false}},[]);
- useEffect(()=>{mounted.current=true;void refresh();let ws:WebSocket|undefined;let retry:ReturnType<typeof setTimeout>;let disposed=false;
-  function connect(){if(disposed)return;ws=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws`);ws.onopen=()=>{setConnected(true);void refresh()};ws.onmessage=e=>{try{if(JSON.parse(e.data).type==='SYNC_NOTIFICATION')void refresh()}catch{}};ws.onclose=()=>{setConnected(false);if(!disposed)retry=setTimeout(connect,5000)};ws.onerror=()=>ws?.close();}connect();
-  const interval=setInterval(()=>void refresh(),15000);const online=()=>void refresh();window.addEventListener('online',online);
-  return()=>{mounted.current=false;disposed=true;clearTimeout(retry);clearInterval(interval);ws?.close();window.removeEventListener('online',online)};
- },[refresh]);
- useEffect(()=>{detailId.current=selected;setDetail(null);setNote('');setAuthority('');setResponder('');if(selected)void request<Detail>('/incidents/'+selected).then(d=>{if(detailId.current===selected)setDetail(d)}).catch(e=>setError(e.message))},[selected]);
- async function command(action:string,subjectId:string,revision:number,body:Record<string,unknown>,existing?:Command){
-  const c=existing||{schemaVersion:1 as const,commandId:uuid(),action,subjectId,expectedRevision:revision,data:body};setBusy(true);setError('');
-  try{await request('/emergency/commands',c);setPendingCommand(null);await refresh()}
-  catch(e){setError(e instanceof Error?e.message:'Command interrupted');if(!(e instanceof HTTPError))setPendingCommand(c);else{setPendingCommand(null);if(e.status===409)await refresh()}}
-  finally{setBusy(false)}
- }
- const counts=Object.fromEntries(data?.counts.map(c=>[c.status,c.count])||[]),total=Object.values(counts).reduce((a,b)=>a+b,0),active=total-(counts.RESOLVED||0)-(counts.CANCELLED||0);
- const items=data?.incidents.filter(i=>(filter==='ALL'||filter==='ACTIVE'&&!closed(i.status)||i.status===filter)&&`${i.incident_id} ${i.operation.payload.text} ${i.operation.payload.category}`.toLowerCase().includes(search.toLowerCase()))||[];
- const i=detail?.incident;const canMutate=!busy&&!stale&&!pendingCommand;
- return <div className="command-center">
-  <aside className="command-rail"><a className="command-brand" href="/" aria-label="OFFGRID"><span><Radio size={24}/></span>OFFGRID<small>RESPONSE NETWORK</small></a><div className="rail-label">COMMAND CENTER</div><nav>{[['Operations',Siren],['Gateways',Radio],['Authorities',Shield],['Activity',Activity]].map(([name,Icon])=>{const I=Icon as typeof Siren;return <button className={view===name?'active':''} onClick={()=>setView(String(name))} key={String(name)}><I size={18}/>{String(name)}{name==='Operations'&&!!active&&<b>{active}</b>}</button>})}</nav><div className="rail-bottom"><Shield size={18}/><strong>Sandbox authority workflow</strong><p>No calls or messages are sent to real emergency services.</p><a href="?legacy=1">Network diagnostics <ArrowUpRight size={13}/></a></div></aside>
-  <main className="command-main"><header className="command-header"><div><span className="eyebrow">OFFGRID / {view.toUpperCase()}</span><h1>{view==='Operations'?'Emergency operations':view==='Gateways'?'Gateway monitoring':view==='Authorities'?'Response directory':'Recorded activity'}</h1></div><div className="header-actions"><span className={'live-status '+(stale?'is-stale':'')}><i/>{stale?'Connection unavailable':connected?'Live updates':'REST fallback'}</span><button className="icon-button" title="Refresh snapshot" onClick={()=>void refresh()}><RefreshCw size={17}/></button><button className="icon-button" title="Sign out" onClick={()=>void request('/operator/logout',{}).then(()=>{setData(null);setLogin(true)})}><LogOut size={17}/></button></div></header>
-  {login?<section className="auth-panel"><Shield size={36}/><h2>Operator sign-in required</h2><p>Sign in with your privately provisioned operator credential to access your response group.</p><a className="primary-button" href="/login">Open secure sign-in <ChevronRight size={16}/></a></section>:<>
-  {error&&<div className="command-banner" role="alert">{error}<button onClick={()=>setError('')} aria-label="Dismiss"><X size={16}/></button></div>}
-  {pendingCommand&&<div className="command-banner">Confirmation was interrupted. Retry the same command ID safely.<button disabled={busy} onClick={()=>void command(pendingCommand.action,pendingCommand.subjectId,pendingCommand.expectedRevision,pendingCommand.data,pendingCommand)}>Retry exact command</button></div>}
-  {stale&&data&&<div className="command-banner">Showing the last snapshot from {time(data.observedAt)}. Editing is paused until the backend reconnects.</div>}
-  <div className="workspace-meta"><span><span className="square-mark"/> {data?'Authenticated PostgreSQL records':'Connecting to backend…'}</span><span>Snapshot {time(data?.observedAt||null)} <span className="meta-divider">/</span> Authority integrations: sandbox</span></div>
-  {view==='Operations'&&<>
-   <section className="command-metrics">{[['Active emergencies',active,'Unresolved incidents','urgent'],['Awaiting acknowledgment',counts.RECEIVED||0,'New to the command center',''],['Responders assigned',(counts.RESPONDER_ASSIGNED||0)+(counts.RESPONDER_EN_ROUTE||0),'Assigned or en route',''],['Resolved',counts.RESOLVED||0,`${total} total incidents`,'']].map(([title,n,sub,cl])=><article key={String(title)} className={String(cl)}><span>{title}</span><strong>{data?n:'—'}</strong><small>{sub}</small></article>)}</section>
-   <section className="operations-layout"><div className="incident-workspace"><div className="section-heading"><h2>Incident field map <span>REPORTED LOCATIONS</span></h2><span><MapPin size={14}/>{data?.incidents.filter(hasLocation).length||0} located</span></div><IncidentMap incidents={items} selected={selected} select={setSelected}/><div className="map-note"><CircleHelp size={14}/> Coordinates are reported, not independently verified. Accuracy is unavailable in rc.2; incidents without coordinates stay in the list.</div>
-    <div className="incident-tools"><div className="segmented">{['ACTIVE','ALL','RECEIVED','RESOLVED'].map(f=><button key={f} className={filter===f?'active':''} onClick={()=>setFilter(f)}>{f==='RECEIVED'?'New':label(f)}</button>)}</div><input placeholder="Search incidents…" aria-label="Search incidents" value={search} onChange={e=>setSearch(e.target.value)}/></div>
-    <div className="incident-table"><div className="table-labels"><span>INCIDENT / CATEGORY</span><span>LOCATION</span><span>RECEIVED</span><span>STATUS</span></div>{items.map(inc=><button key={inc.incident_id} className={'incident-row '+(selected===inc.incident_id?'selected':'')} onClick={()=>setSelected(inc.incident_id)}><span><b className="incident-id">{short(inc.incident_id)}</b><small>{label(inc.operation.payload.category)}</small></span><span>{inc.operation.payload.location.label}<small>{hasLocation(inc)?'Coordinates · accuracy unknown':'Coordinates unavailable'}</small></span><span>{time(inc.received_at)}</span><Status value={inc.status}/></button>)}{!items.length&&<div className="empty-state"><Siren size={28}/><h3>{data?'No matching incidents':'Waiting for backend records'}</h3><p>{data?'New committed SOS operations will appear here automatically.':'No incident data is generated locally.'}</p></div>}</div><div className="table-footer">{items.length} shown · up to {data?.incidentLimit||500} most recent incidents <span>Authority notified: {counts.AUTHORITY_NOTIFIED||0} · Sandbox submissions do not count</span></div>
-   </div><aside className="activity-sidebar"><div className="section-heading"><h2>Live activity</h2><Activity size={16}/></div><Timeline events={data?.events.slice(0,8)||[]} select={setSelected}/><div className="gateway-summary"><Radio size={21}/><h3>{data?.gateways.filter(g=>g.backendConnected).length||0} active gateways</h3><p>{data?.gateways.reduce((a,g)=>a+(g.backendConnected?g.body?.pendingUploads||0:0),0)||0} pending · {data?.gateways.reduce((a,g)=>a+(g.backendConnected?g.body?.failedUploads||0:0),0)||0} need review</p><small>Counts from current gateway reports. Offline backlogs are unknown.</small><button onClick={()=>setView('Gateways')}>View gateways <ArrowUpRight size={14}/></button></div></aside></section>
-  </>}
-  {view==='Gateways'&&<section className="gateway-grid">{data?.gateways.map(g=><article className="gateway-card" key={g.node_id}><div className="section-heading"><Radio/><h2>{g.display_name}</h2><Status value={g.backendConnected?'CONNECTED':'STALE'}/></div><code>{g.node_id}</code><div className="connectivity-list">{[['Mesh',g.body?.meshConnected],['Internet to backend',g.body?.internetReachable],['Backend heartbeat',g.backendConnected]].map(([n,v])=><div key={String(n)}><span>{n}</span><b>{!g.backendConnected&&n!=='Backend heartbeat'?'Unknown (stale)':v===undefined?'Unknown':v?'Connected':'Not connected'}</b></div>)}</div><div className="gateway-numbers"><span><b>{g.successful_uploads}</b>Durable SOS uploads</span><span><b>{g.backendConnected?g.body?.pendingUploads??'—':'—'}</b>Pending</span><span><b>{g.backendConnected?g.body?.failedUploads??'—':'—'}</b>Needs review</span></div><p>Last report: {time(g.observed_at)} · Last commit: {time(g.last_successful_upload)}</p></article>)}{!data?.gateways.length&&<div className="empty-state"><Radio/><h3>No gateways provisioned</h3><p>Use the host provisioning CLI with the iPhone’s existing installation ID.</p></div>}</section>}
-  {view==='Authorities'&&<Directory authorities={data?.authorities||[]} responders={data?.responders||[]} enabled={canMutate} save={command}/>}
-  {view==='Activity'&&<section className="activity-page"><div className="section-heading"><h2>Incident history</h2><span>Latest 200 recorded events</span></div><Timeline events={data?.events||[]} select={setSelected}/></section>}
-  </>}
-  </main>
-  {selected&&<div className="detail-backdrop" onClick={()=>setSelected(null)}><aside className="incident-detail" aria-label="Incident details" onClick={e=>e.stopPropagation()}><div className="section-heading"><span className="eyebrow">INCIDENT DETAIL</span><button className="icon-button" aria-label="Close incident" onClick={()=>setSelected(null)}><X/></button></div>{i?<><div className="detail-title"><div className="emergency-icon"><Siren size={25}/></div><h2>{label(i.operation.payload.category)}</h2><code>{i.incident_id}</code><Status value={i.status}/></div><p className="incident-description">{i.operation.payload.text}</p><dl><dt>Reported location</dt><dd>{i.operation.payload.location.label}<small>{hasLocation(i)?`${i.operation.payload.location.latitude}, ${i.operation.payload.location.longitude} · accuracy unknown`:'Coordinates unavailable'}</small></dd><dt>Origin / operation</dt><dd><code>{i.origin_node_id}<br/>{i.operation_id}</code></dd><dt>Created / backend committed</dt><dd>{time(i.operation.timestamp)} / {time(i.received_at)}</dd><dt>First gateway</dt><dd>{short(i.first_gateway_id)}</dd></dl>
-   <section className="detail-section"><h3>Response actions</h3>{!closed(i.status)?<><div className="button-row">{i.status==='RECEIVED'&&<button className="primary-button" disabled={!canMutate} onClick={()=>void command('SET_STATUS',i.incident_id,i.revision,{status:'ACKNOWLEDGED',note:'Operator acknowledged'})}><Check size={16}/> Acknowledge incident</button>}{i.status==='RESPONDER_ASSIGNED'&&<button disabled={!canMutate} onClick={()=>void command('SET_STATUS',i.incident_id,i.revision,{status:'RESPONDER_EN_ROUTE',note:'Operator recorded responder departure'})}>Mark en route</button>}</div>
-   <label>Assigned authority<select value={authority||i.authority_id||''} onChange={e=>setAuthority(e.target.value)}><option value="">Select organization</option>{data?.authorities.filter(a=>a.active).map(a=><option key={a.authority_id} value={a.authority_id}>{a.name}</option>)}</select></label><button disabled={!canMutate||!authority||!!i.responder_id} onClick={()=>void command('ASSIGN_AUTHORITY',i.incident_id,i.revision,{authorityId:authority})}>Assign authority</button>
-   <label>Responder<select value={responder||i.responder_id||''} onChange={e=>setResponder(e.target.value)}><option value="">Select responder</option>{data?.responders.filter(r=>r.active&&r.authority_id===i.authority_id).map(r=><option key={r.responder_id} value={r.responder_id}>{r.name}</option>)}</select></label><button disabled={!canMutate||!responder||!['ACKNOWLEDGED','AUTHORITY_NOTIFIED'].includes(i.status)} onClick={()=>void command('ASSIGN_RESPONDER',i.incident_id,i.revision,{responderId:responder})}>Assign responder</button>
-   <label>Resolution / cancellation note<textarea value={note} maxLength={1000} onChange={e=>setNote(e.target.value)} placeholder="Record the reason…"/></label><div className="button-row"><button disabled={!canMutate||!note.trim()||i.status==='RECEIVED'} onClick={()=>void command('SET_STATUS',i.incident_id,i.revision,{status:'RESOLVED',note})}>Resolve incident</button><button disabled={!canMutate||!note.trim()} onClick={()=>void command('SET_STATUS',i.incident_id,i.revision,{status:'CANCELLED',note})}>Cancel incident</button></div></>:<p>This incident is closed. Its history remains available.</p>}</section>
-   <section className="sandbox-panel"><span className="eyebrow">SANDBOX ONLY</span><h3>Authority notification</h3><p>This records a simulated submission. It does not contact an authority.</p><button disabled={!canMutate||!i.authority_id||i.status==='RECEIVED'||closed(i.status)} onClick={()=>void command('SANDBOX_NOTIFY',i.incident_id,i.revision,{})}>Submit sandbox notification</button>{detail.notifications.map(n=><div key={n.notification_id}><Status value={n.status}/>{n.status==='SANDBOX_SUBMITTED'&&<button disabled={!canMutate||closed(i.status)} onClick={()=>void command('SANDBOX_ACK',i.incident_id,i.revision,{notificationId:n.notification_id})}>Simulate acknowledgment</button>}</div>)}</section>
-   <section className="detail-section"><h3>Gateway observations</h3>{detail.uploads.map(u=><p key={u.node_id}><code>{short(u.node_id)}</code> · {u.attempts} backend requests<br/>{u.observation?`Reported hop count: ${u.observation.hopCount}`:'Mesh path not reported'}</p>)}<small>Self-reported transport metadata; no inferred relay path.</small></section><section className="detail-section"><h3>Recorded history</h3><Timeline events={[...detail.events].reverse()} select={()=>{}}/></section></>:<div className="empty-state">Loading incident…</div>}</aside></div>}
- </div>
+async function request<T>(path: string, body?: unknown): Promise<T> {
+  const response = await fetch("/api/v1" + path, {
+    credentials: "same-origin",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    ...(body ? { method: "POST", body: JSON.stringify(body) } : {}),
+  });
+  const data = await response.json();
+  if (!response.ok)
+    throw new HTTPError(
+      response.status,
+      data.error?.message || "Request failed",
+    );
+  return data;
 }
-function Status({value}:{value:string}){return <span className={'status-tag status-'+value.toLowerCase()}>{label(value)}</span>}
-function hasLocation(i:Incident){const l=i.operation.payload.location;return Number.isFinite(l.latitude)&&Number.isFinite(l.longitude)}
-function IncidentMap({incidents,selected,select}:{incidents:Incident[];selected:string|null;select:(id:string)=>void}){
- const points=incidents.filter(hasLocation);const [zoom,setZoom]=useState(1),[center,setCenter]=useState<[number,number]>([0,0]);
- function fit(){if(points.length){setCenter([points.reduce((s,i)=>s+i.operation.payload.location.longitude!,0)/points.length,points.reduce((s,i)=>s+i.operation.payload.location.latitude!,0)/points.length]);setZoom(4)}else{setCenter([0,0]);setZoom(1)}}
- const x=(lon:number)=>400+(lon-center[0])*2.1*zoom,y=(lat:number)=>150-(lat-center[1])*1.65*zoom;
- return <div className="incident-map"><div className="map-caption"><Crosshair size={14}/> Geographic incident plot · WGS84</div><svg viewBox="0 0 800 300" role="img" aria-label="Interactive incident coordinate map"><defs><pattern id="map-grid" width="40" height="30" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 30" fill="none" stroke="#dbe4e4" strokeWidth=".6"/></pattern></defs><rect width="800" height="300" fill="url(#map-grid)"/>{[-60,-30,0,30,60].map(lat=><g key={lat}><line x1="0" x2="800" y1={y(lat)} y2={y(lat)} stroke="#c6d6d6" strokeDasharray="3 5"/><text x="8" y={y(lat)-5} fontSize="9" fill="#829797">{lat}°</text></g>)}{[-150,-100,-50,0,50,100,150].map(lon=><g key={lon}><line y1="0" y2="300" x1={x(lon)} x2={x(lon)} stroke="#c6d6d6" strokeDasharray="3 5"/><text y="289" x={x(lon)+4} fontSize="9" fill="#829797">{lon}°</text></g>)}{points.map(i=><g key={i.incident_id} tabIndex={0} role="button" aria-label={`${i.operation.payload.category} ${short(i.incident_id)}`} onClick={()=>select(i.incident_id)} onKeyDown={e=>{if(e.key==='Enter')select(i.incident_id)}} transform={`translate(${x(i.operation.payload.location.longitude!)},${y(i.operation.payload.location.latitude!)})`} style={{cursor:'pointer'}}><title>{`${short(i.incident_id)} · ${label(i.operation.payload.category)} · ${i.status}`}</title><circle r={selected===i.incident_id?17:13} fill="#d65745" opacity=".14"/><circle r="6" fill={closed(i.status)?'#478379':'#cc4a38'} stroke="white" strokeWidth="2"/><text x="12" y="4" fontSize="10" fill="#364b4c">{short(i.incident_id)}</text></g>)}</svg><div className="map-controls"><button title="Zoom in" onClick={()=>setZoom(z=>Math.min(32,z*2))}><ZoomIn size={17}/></button><button title="Zoom out" onClick={()=>setZoom(z=>Math.max(1,z/2))}><ZoomOut size={17}/></button><button title="Center on incidents" onClick={fit}><Crosshair size={17}/></button></div>{!points.length&&<div className="map-empty"><MapPin size={22}/><span>No coordinates to plot</span><small>{incidents.length} incidents remain available in the list</small></div>}</div>
+export default function Emergency() {
+  const [data, setData] = useState<Snapshot | null>(null),
+    [view, setView] = useState("Operations"),
+    [selected, setSelected] = useState<string | null>(null),
+    [detail, setDetail] = useState<Detail | null>(null);
+  const [error, setError] = useState(""),
+    [login, setLogin] = useState(false),
+    [connected, setConnected] = useState(false),
+    [stale, setStale] = useState(true),
+    [busy, setBusy] = useState(false),
+    [filter, setFilter] = useState("ACTIVE"),
+    [search, setSearch] = useState("");
+  const [authority, setAuthority] = useState(""),
+    [responder, setResponder] = useState(""),
+    [note, setNote] = useState(""),
+    [pendingCommand, setPendingCommand] = useState<Command | null>(null);
+  const [older, setOlder] = useState<Incident[]>([]),
+    [olderCursor, setOlderCursor] = useState<string | null | undefined>(
+      undefined,
+    );
+  const refreshing = useRef(false),
+    detailId = useRef<string | null>(null),
+    mounted = useRef(true);
+  const refresh = useCallback(async () => {
+    if (refreshing.current) return;
+    refreshing.current = true;
+    try {
+      const s = await request<Snapshot>("/emergency/snapshot");
+      if (s.schemaVersion !== 1) throw new Error("Unsupported snapshot");
+      if (!mounted.current) return;
+      setData(s);
+      setStale(false);
+      setLogin(false);
+      if (detailId.current) {
+        const d = await request<Detail>("/incidents/" + detailId.current);
+        if (d.incident.incident_id === detailId.current) setDetail(d);
+      }
+    } catch (e) {
+      setStale(true);
+      if (e instanceof HTTPError && e.status === 401) {
+        setLogin(true);
+        setData(null);
+        setDetail(null);
+        setOlder([]);
+        setOlderCursor(undefined);
+        setSelected(null);
+      } else setError(e instanceof Error ? e.message : "Refresh failed");
+    } finally {
+      refreshing.current = false;
+    }
+  }, []);
+  useEffect(() => {
+    mounted.current = true;
+    void refresh();
+    let ws: WebSocket | undefined;
+    let retry: ReturnType<typeof setTimeout>;
+    let disposed = false;
+    function connect() {
+      if (disposed) return;
+      ws = new WebSocket(
+        `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`,
+      );
+      ws.onopen = () => {
+        setConnected(true);
+        void refresh();
+      };
+      ws.onmessage = (e) => {
+        try {
+          if (JSON.parse(e.data).type === "SYNC_NOTIFICATION") void refresh();
+        } catch {}
+      };
+      ws.onclose = () => {
+        setConnected(false);
+        if (!disposed) retry = setTimeout(connect, 5000);
+      };
+      ws.onerror = () => ws?.close();
+    }
+    connect();
+    const interval = setInterval(() => void refresh(), 15000);
+    const online = () => void refresh();
+    window.addEventListener("online", online);
+    return () => {
+      mounted.current = false;
+      disposed = true;
+      clearTimeout(retry);
+      clearInterval(interval);
+      ws?.close();
+      window.removeEventListener("online", online);
+    };
+  }, [refresh]);
+  useEffect(() => {
+    detailId.current = selected;
+    setDetail(null);
+    setNote("");
+    setAuthority("");
+    setResponder("");
+    if (selected)
+      void request<Detail>("/incidents/" + selected)
+        .then((d) => {
+          if (detailId.current === selected) setDetail(d);
+        })
+        .catch((e) => setError(e.message));
+  }, [selected]);
+  async function command(
+    action: string,
+    subjectId: string,
+    revision: number,
+    body: Record<string, unknown>,
+    existing?: Command,
+  ) {
+    const c = existing || {
+      schemaVersion: 1 as const,
+      commandId: uuid(),
+      action,
+      subjectId,
+      expectedRevision: revision,
+      data: body,
+    };
+    setBusy(true);
+    setError("");
+    try {
+      await request("/emergency/commands", c);
+      setPendingCommand(null);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Command interrupted");
+      if (!(e instanceof HTTPError)) setPendingCommand(c);
+      else {
+        setPendingCommand(null);
+        if (e.status === 409) await refresh();
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+  const counts = Object.fromEntries(
+      data?.counts.map((c) => [c.status, c.count]) || [],
+    ),
+    total = Object.values(counts).reduce((a, b) => a + b, 0),
+    active = total - (counts.RESOLVED || 0) - (counts.CANCELLED || 0);
+  const allIncidents = data
+    ? [
+        ...new Map(
+          [...older, ...data.incidents].map((i) => [i.incident_id, i]),
+        ).values(),
+      ].sort((a, b) => Number(b.received_at) - Number(a.received_at))
+    : [];
+  const items =
+    allIncidents.filter(
+      (i) =>
+        (filter === "ALL" ||
+          (filter === "ACTIVE" && !closed(i.status)) ||
+          i.status === filter) &&
+        `${i.incident_id} ${i.operation.payload.text} ${i.operation.payload.category}`
+          .toLowerCase()
+          .includes(search.toLowerCase()),
+    ) || [];
+  const nextCursor = olderCursor === undefined ? data?.nextCursor : olderCursor;
+  async function loadOlder() {
+    if (!nextCursor) return;
+    try {
+      const r = await request<{
+        incidents: Incident[];
+        nextCursor: string | null;
+      }>(
+        "/emergency/incidents?cursor=" +
+          encodeURIComponent(nextCursor) +
+          "&limit=100",
+      );
+      setOlder((old) => [...old, ...r.incidents]);
+      setOlderCursor(r.nextCursor);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "History unavailable");
+    }
+  }
+  const i = detail?.incident;
+  const canMutate = !busy && !stale && !pendingCommand;
+  return (
+    <div className="command-center">
+      <aside className="command-rail">
+        <a className="command-brand" href="/" aria-label="OFFGRID">
+          <span>
+            <Radio size={24} />
+          </span>
+          OFFGRID<small>RESPONSE NETWORK</small>
+        </a>
+        <div className="rail-label">COMMAND CENTER</div>
+        <nav>
+          {[
+            ["Operations", Siren],
+            ["Gateways", Radio],
+            ["Authorities", Shield],
+            ["Activity", Activity],
+          ].map(([name, Icon]) => {
+            const I = Icon as typeof Siren;
+            return (
+              <button
+                className={view === name ? "active" : ""}
+                onClick={() => setView(String(name))}
+                key={String(name)}
+              >
+                <I size={18} />
+                {String(name)}
+                {name === "Operations" && !!active && <b>{active}</b>}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="rail-bottom">
+          <Shield size={18} />
+          <strong>Sandbox authority workflow</strong>
+          <p>No calls or messages are sent to real emergency services.</p>
+          <a href="?legacy=1">
+            Network diagnostics <ArrowUpRight size={13} />
+          </a>
+        </div>
+      </aside>
+      <main className="command-main">
+        <header className="command-header">
+          <div>
+            <span className="eyebrow">OFFGRID / {view.toUpperCase()}</span>
+            <h1>
+              {view === "Operations"
+                ? "Emergency operations"
+                : view === "Gateways"
+                  ? "Gateway monitoring"
+                  : view === "Authorities"
+                    ? "Response directory"
+                    : "Recorded activity"}
+            </h1>
+          </div>
+          <div className="header-actions">
+            <span className={"live-status " + (stale ? "is-stale" : "")}>
+              <i />
+              {stale
+                ? "Connection unavailable"
+                : connected
+                  ? "Live updates"
+                  : "REST fallback"}
+            </span>
+            <button
+              className="icon-button"
+              title="Refresh snapshot"
+              onClick={() => void refresh()}
+            >
+              <RefreshCw size={17} />
+            </button>
+            <button
+              className="icon-button"
+              title="Sign out"
+              onClick={() =>
+                void request("/operator/logout", {}).then(() => {
+                  setData(null);
+                  setLogin(true);
+                })
+              }
+            >
+              <LogOut size={17} />
+            </button>
+          </div>
+        </header>
+        {login ? (
+          <section className="auth-panel">
+            <Shield size={36} />
+            <h2>Operator sign-in required</h2>
+            <p>
+              Sign in with your privately provisioned operator credential to
+              access your response group.
+            </p>
+            <a className="primary-button" href="/login">
+              Open secure sign-in <ChevronRight size={16} />
+            </a>
+          </section>
+        ) : (
+          <>
+            {error && (
+              <div className="command-banner" role="alert">
+                {error}
+                <button onClick={() => setError("")} aria-label="Dismiss">
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+            {pendingCommand && (
+              <div className="command-banner">
+                Confirmation was interrupted. Retry the same command ID safely.
+                <button
+                  disabled={busy}
+                  onClick={() =>
+                    void command(
+                      pendingCommand.action,
+                      pendingCommand.subjectId,
+                      pendingCommand.expectedRevision,
+                      pendingCommand.data,
+                      pendingCommand,
+                    )
+                  }
+                >
+                  Retry exact command
+                </button>
+              </div>
+            )}
+            {stale && data && (
+              <div className="command-banner">
+                Showing the last snapshot from {time(data.observedAt)}. Editing
+                is paused until the backend reconnects.
+              </div>
+            )}
+            <div className="workspace-meta">
+              <span>
+                <span className="square-mark" />{" "}
+                {data
+                  ? "Authenticated PostgreSQL records"
+                  : "Connecting to backend…"}
+              </span>
+              <span>
+                Snapshot {time(data?.observedAt || null)}{" "}
+                <span className="meta-divider">/</span> Authority integrations:
+                sandbox
+              </span>
+            </div>
+            {view === "Operations" && (
+              <>
+                <section className="command-metrics">
+                  {[
+                    [
+                      "Active emergencies",
+                      active,
+                      "Unresolved incidents",
+                      "urgent",
+                    ],
+                    [
+                      "Awaiting acknowledgment",
+                      counts.RECEIVED || 0,
+                      "New to the command center",
+                      "",
+                    ],
+                    [
+                      "Responders assigned",
+                      (counts.RESPONDER_ASSIGNED || 0) +
+                        (counts.RESPONDER_EN_ROUTE || 0),
+                      "Assigned or en route",
+                      "",
+                    ],
+                    [
+                      "Resolved",
+                      counts.RESOLVED || 0,
+                      `${total} total incidents`,
+                      "",
+                    ],
+                  ].map(([title, n, sub, cl]) => (
+                    <article key={String(title)} className={String(cl)}>
+                      <span>{title}</span>
+                      <strong>{data ? n : "—"}</strong>
+                      <small>{sub}</small>
+                    </article>
+                  ))}
+                </section>
+                <section className="operations-layout">
+                  <div className="incident-workspace">
+                    <div className="section-heading">
+                      <h2>
+                        Incident field map <span>REPORTED LOCATIONS</span>
+                      </h2>
+                      <span>
+                        <MapPin size={14} />
+                        {data?.incidents.filter(hasLocation).length || 0}{" "}
+                        located
+                      </span>
+                    </div>
+                    <IncidentMap
+                      incidents={items}
+                      selected={selected}
+                      select={setSelected}
+                    />
+                    <div className="map-note">
+                      <CircleHelp size={14} /> Coordinates are reported, not
+                      independently verified. Accuracy is unavailable in rc.2;
+                      incidents without coordinates stay in the list.
+                    </div>
+                    <div className="incident-tools">
+                      <div className="segmented">
+                        {["ACTIVE", "ALL", "RECEIVED", "RESOLVED"].map((f) => (
+                          <button
+                            key={f}
+                            className={filter === f ? "active" : ""}
+                            onClick={() => setFilter(f)}
+                          >
+                            {f === "RECEIVED" ? "New" : label(f)}
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        placeholder="Search incidents…"
+                        aria-label="Search incidents"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                      />
+                    </div>
+                    <div className="incident-table">
+                      <div className="table-labels">
+                        <span>INCIDENT / CATEGORY</span>
+                        <span>LOCATION</span>
+                        <span>RECEIVED</span>
+                        <span>STATUS</span>
+                      </div>
+                      {items.map((inc) => (
+                        <button
+                          key={inc.incident_id}
+                          className={
+                            "incident-row " +
+                            (selected === inc.incident_id ? "selected" : "")
+                          }
+                          onClick={() => setSelected(inc.incident_id)}
+                        >
+                          <span>
+                            <b className="incident-id">
+                              {short(inc.incident_id)}
+                            </b>
+                            <small>
+                              {label(inc.operation.payload.category)}
+                            </small>
+                          </span>
+                          <span>
+                            {inc.operation.payload.location.label}
+                            <small>
+                              {hasLocation(inc)
+                                ? "Coordinates · accuracy unknown"
+                                : "Coordinates unavailable"}
+                            </small>
+                          </span>
+                          <span>{time(inc.received_at)}</span>
+                          <Status value={inc.status} />
+                        </button>
+                      ))}
+                      {!items.length && (
+                        <div className="empty-state">
+                          <Siren size={28} />
+                          <h3>
+                            {data
+                              ? "No matching incidents"
+                              : "Waiting for backend records"}
+                          </h3>
+                          <p>
+                            {data
+                              ? "New committed SOS operations will appear here automatically."
+                              : "No incident data is generated locally."}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="table-footer">
+                      {items.length} shown · {total} on record{" "}
+                      {nextCursor && (
+                        <button onClick={() => void loadOlder()}>
+                          Load older incidents
+                        </button>
+                      )}{" "}
+                      <span>
+                        Authority notified: {counts.AUTHORITY_NOTIFIED || 0} ·
+                        Sandbox submissions do not count
+                      </span>
+                    </div>
+                  </div>
+                  <aside className="activity-sidebar">
+                    <div className="section-heading">
+                      <h2>Live activity</h2>
+                      <Activity size={16} />
+                    </div>
+                    <Timeline
+                      events={data?.events.slice(0, 8) || []}
+                      select={setSelected}
+                    />
+                    <div className="gateway-summary">
+                      <Radio size={21} />
+                      <h3>
+                        {data?.gateways.filter((g) => g.backendConnected)
+                          .length || 0}{" "}
+                        active gateways
+                      </h3>
+                      <p>
+                        {data?.gateways.reduce(
+                          (a, g) =>
+                            a +
+                            (g.backendConnected
+                              ? g.body?.pendingUploads || 0
+                              : 0),
+                          0,
+                        ) || 0}{" "}
+                        pending ·{" "}
+                        {data?.gateways.reduce(
+                          (a, g) =>
+                            a +
+                            (g.backendConnected
+                              ? g.body?.failedUploads || 0
+                              : 0),
+                          0,
+                        ) || 0}{" "}
+                        need review
+                      </p>
+                      <small>
+                        Counts from current gateway reports. Offline backlogs
+                        are unknown.
+                      </small>
+                      <button onClick={() => setView("Gateways")}>
+                        View gateways <ArrowUpRight size={14} />
+                      </button>
+                    </div>
+                  </aside>
+                </section>
+              </>
+            )}
+            {view === "Gateways" && (
+              <section className="gateway-grid">
+                {data?.gateways.map((g) => (
+                  <article className="gateway-card" key={g.node_id}>
+                    <div className="section-heading">
+                      <Radio />
+                      <h2>{g.display_name}</h2>
+                      <Status
+                        value={g.backendConnected ? "CONNECTED" : "STALE"}
+                      />
+                    </div>
+                    <code>{g.node_id}</code>
+                    <div className="connectivity-list">
+                      {[
+                        ["Mesh", g.body?.meshConnected],
+                        ["Internet probe", g.body?.internetReachable],
+                        ["Backend heartbeat", g.backendConnected],
+                      ].map(([n, v]) => (
+                        <div key={String(n)}>
+                          <span>{n}</span>
+                          <b>
+                            {!g.backendConnected && n !== "Backend heartbeat"
+                              ? "Unknown (stale)"
+                              : v == null
+                                ? "Unknown"
+                                : v
+                                  ? "Connected"
+                                  : "Not connected"}
+                          </b>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="gateway-numbers">
+                      <span>
+                        <b>{g.successful_uploads}</b>Durable SOS uploads
+                      </span>
+                      <span>
+                        <b>
+                          {g.backendConnected
+                            ? (g.body?.pendingUploads ?? "—")
+                            : "—"}
+                        </b>
+                        Pending
+                      </span>
+                      <span>
+                        <b>
+                          {g.backendConnected
+                            ? (g.body?.failedUploads ?? "—")
+                            : "—"}
+                        </b>
+                        Needs review
+                      </span>
+                    </div>
+                    <p>
+                      Last report: {time(g.observed_at)} · Last commit:{" "}
+                      {time(g.last_successful_upload)}
+                    </p>
+                  </article>
+                ))}
+                {!data?.gateways.length && (
+                  <div className="empty-state">
+                    <Radio />
+                    <h3>No gateways provisioned</h3>
+                    <p>
+                      Use the host provisioning CLI with the iPhone’s existing
+                      installation ID.
+                    </p>
+                  </div>
+                )}
+              </section>
+            )}
+            {view === "Authorities" && (
+              <Directory
+                authorities={data?.authorities || []}
+                responders={data?.responders || []}
+                enabled={canMutate}
+                save={command}
+              />
+            )}
+            {view === "Activity" && (
+              <section className="activity-page">
+                <div className="section-heading">
+                  <h2>Incident history</h2>
+                  <span>Latest 200 recorded events</span>
+                </div>
+                <Timeline events={data?.events || []} select={setSelected} />
+              </section>
+            )}
+          </>
+        )}
+      </main>
+      {selected && (
+        <div className="detail-backdrop" onClick={() => setSelected(null)}>
+          <aside
+            className="incident-detail"
+            aria-label="Incident details"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="section-heading">
+              <span className="eyebrow">INCIDENT DETAIL</span>
+              <button
+                className="icon-button"
+                aria-label="Close incident"
+                onClick={() => setSelected(null)}
+              >
+                <X />
+              </button>
+            </div>
+            {i ? (
+              <>
+                <div className="detail-title">
+                  <div className="emergency-icon">
+                    <Siren size={25} />
+                  </div>
+                  <h2>{label(i.operation.payload.category)}</h2>
+                  <code>{i.incident_id}</code>
+                  <Status value={i.status} />
+                </div>
+                <p className="incident-description">
+                  {i.operation.payload.text}
+                </p>
+                <dl>
+                  <dt>Reported location</dt>
+                  <dd>
+                    {i.operation.payload.location.label}
+                    <small>
+                      {hasLocation(i)
+                        ? `${i.operation.payload.location.latitude}, ${i.operation.payload.location.longitude} · accuracy unknown`
+                        : "Coordinates unavailable"}
+                    </small>
+                  </dd>
+                  <dt>Origin / operation</dt>
+                  <dd>
+                    <code>
+                      {i.origin_node_id}
+                      <br />
+                      {i.operation_id}
+                    </code>
+                  </dd>
+                  <dt>Created / backend committed</dt>
+                  <dd>
+                    {time(i.operation.timestamp)} / {time(i.received_at)}
+                  </dd>
+                  <dt>First gateway</dt>
+                  <dd>{short(i.first_gateway_id)}</dd>
+                </dl>
+                <section className="detail-section">
+                  <h3>Response actions</h3>
+                  {!closed(i.status) ? (
+                    <>
+                      <div className="button-row">
+                        {i.status === "RECEIVED" && (
+                          <button
+                            className="primary-button"
+                            disabled={!canMutate}
+                            onClick={() =>
+                              void command(
+                                "SET_STATUS",
+                                i.incident_id,
+                                i.revision,
+                                {
+                                  status: "ACKNOWLEDGED",
+                                  note: "Operator acknowledged",
+                                },
+                              )
+                            }
+                          >
+                            <Check size={16} /> Acknowledge incident
+                          </button>
+                        )}
+                        {i.status === "RESPONDER_ASSIGNED" && (
+                          <button
+                            disabled={!canMutate}
+                            onClick={() =>
+                              void command(
+                                "SET_STATUS",
+                                i.incident_id,
+                                i.revision,
+                                {
+                                  status: "RESPONDER_EN_ROUTE",
+                                  note: "Operator recorded responder departure",
+                                },
+                              )
+                            }
+                          >
+                            Mark en route
+                          </button>
+                        )}
+                      </div>
+                      <label>
+                        Assigned authority
+                        <select
+                          value={authority || i.authority_id || ""}
+                          onChange={(e) => setAuthority(e.target.value)}
+                        >
+                          <option value="">Select organization</option>
+                          {data?.authorities
+                            .filter((a) => a.active)
+                            .map((a) => (
+                              <option
+                                key={a.authority_id}
+                                value={a.authority_id}
+                              >
+                                {a.name}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                      <button
+                        disabled={!canMutate || !authority || !!i.responder_id}
+                        onClick={() =>
+                          void command(
+                            "ASSIGN_AUTHORITY",
+                            i.incident_id,
+                            i.revision,
+                            { authorityId: authority },
+                          )
+                        }
+                      >
+                        Assign authority
+                      </button>
+                      <label>
+                        Responder
+                        <select
+                          value={responder || i.responder_id || ""}
+                          onChange={(e) => setResponder(e.target.value)}
+                        >
+                          <option value="">Select responder</option>
+                          {data?.responders
+                            .filter(
+                              (r) =>
+                                r.active && r.authority_id === i.authority_id,
+                            )
+                            .map((r) => (
+                              <option
+                                key={r.responder_id}
+                                value={r.responder_id}
+                              >
+                                {r.name}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                      <button
+                        disabled={
+                          !canMutate ||
+                          !responder ||
+                          !["ACKNOWLEDGED", "AUTHORITY_NOTIFIED"].includes(
+                            i.status,
+                          )
+                        }
+                        onClick={() =>
+                          void command(
+                            "ASSIGN_RESPONDER",
+                            i.incident_id,
+                            i.revision,
+                            { responderId: responder },
+                          )
+                        }
+                      >
+                        Assign responder
+                      </button>
+                      <label>
+                        Resolution / cancellation note
+                        <textarea
+                          value={note}
+                          maxLength={1000}
+                          onChange={(e) => setNote(e.target.value)}
+                          placeholder="Record the reason…"
+                        />
+                      </label>
+                      <div className="button-row">
+                        <button
+                          disabled={
+                            !canMutate ||
+                            !note.trim() ||
+                            i.status === "RECEIVED"
+                          }
+                          onClick={() =>
+                            void command(
+                              "SET_STATUS",
+                              i.incident_id,
+                              i.revision,
+                              { status: "RESOLVED", note },
+                            )
+                          }
+                        >
+                          Resolve incident
+                        </button>
+                        <button
+                          disabled={!canMutate || !note.trim()}
+                          onClick={() =>
+                            void command(
+                              "SET_STATUS",
+                              i.incident_id,
+                              i.revision,
+                              { status: "CANCELLED", note },
+                            )
+                          }
+                        >
+                          Cancel incident
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p>
+                      This incident is closed. Its history remains available.
+                    </p>
+                  )}
+                </section>
+                <section className="sandbox-panel">
+                  <span className="eyebrow">SANDBOX ONLY</span>
+                  <h3>Authority notification</h3>
+                  <p>
+                    This records a simulated submission. It does not contact an
+                    authority.
+                  </p>
+                  <button
+                    disabled={
+                      !canMutate ||
+                      !i.authority_id ||
+                      i.status === "RECEIVED" ||
+                      closed(i.status)
+                    }
+                    onClick={() =>
+                      void command(
+                        "SANDBOX_NOTIFY",
+                        i.incident_id,
+                        i.revision,
+                        {},
+                      )
+                    }
+                  >
+                    Submit sandbox notification
+                  </button>
+                  {detail.notifications.map((n) => (
+                    <div key={n.notification_id}>
+                      <Status value={n.status} />
+                      {n.status === "SANDBOX_SUBMITTED" && (
+                        <button
+                          disabled={!canMutate || closed(i.status)}
+                          onClick={() =>
+                            void command(
+                              "SANDBOX_ACK",
+                              i.incident_id,
+                              i.revision,
+                              { notificationId: n.notification_id },
+                            )
+                          }
+                        >
+                          Simulate acknowledgment
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </section>
+                <section className="detail-section">
+                  <h3>Gateway observations</h3>
+                  {detail.uploads.map((u) => (
+                    <p key={u.node_id}>
+                      <code>{short(u.node_id)}</code> · {u.attempts} backend
+                      requests
+                      <br />
+                      {u.observation
+                        ? `Reported hop count: ${u.observation.hopCount}`
+                        : "Mesh path not reported"}
+                    </p>
+                  ))}
+                  <small>
+                    Self-reported transport metadata; no inferred relay path.
+                  </small>
+                </section>
+                <section className="detail-section">
+                  <h3>Recorded history</h3>
+                  <Timeline
+                    events={[...detail.events].reverse()}
+                    select={() => {}}
+                  />
+                </section>
+              </>
+            ) : (
+              <div className="empty-state">Loading incident…</div>
+            )}
+          </aside>
+        </div>
+      )}
+    </div>
+  );
 }
-function Timeline({events,select}:{events:Event[];select:(id:string)=>void}){return <div className="event-timeline">{events.map(e=><button key={e.event_id} onClick={()=>{if(e.incident_id)select(e.incident_id)}}><span className={'event-dot '+(e.kind==='SERVER_RECEIVED'?'urgent':'')}/><div><time>{time(e.occurred_at)}</time><strong>{label(e.kind)}</strong><small>{e.incident_id?short(e.incident_id):'GATEWAY'} · {short(e.actor_id)}</small>{typeof e.details.note==='string'&&<p>{e.details.note}</p>}</div></button>)}{!events.length&&<p className="quiet-empty">No recorded activity yet.</p>}</div>}
-function Directory({authorities,responders,enabled,save}:{authorities:Authority[];responders:Responder[];enabled:boolean;save:(action:string,id:string,rev:number,data:Record<string,unknown>)=>Promise<void>}){
- const [kind,setKind]=useState('authority'),[edit,setEdit]=useState<string|null>(null),[name,setName]=useState(''),[contact,setContact]=useState(''),[category,setCategory]=useState('AMBULANCE'),[authority,setAuthority]=useState('');
- function submit(e:FormEvent){e.preventDefault();const old=kind==='authority'?authorities.find(a=>a.authority_id===edit):responders.find(r=>r.responder_id===edit);void save(kind==='authority'?'SAVE_AUTHORITY':'SAVE_RESPONDER',edit||uuid(),old?.revision||0,{name,contact,active:true,...(kind==='authority'?{category}:{authorityId:authority})}).then(()=>{setEdit(null);setName('');setContact('')})}
- return <div className="directory-layout"><section><div className="section-heading"><h2>Configured organizations</h2><span>{authorities.length} organizations</span></div>{authorities.map(a=><article className="directory-card" key={a.authority_id}><Shield/><div><h3>{a.name} {!a.active&&'(inactive)'}</h3><span>{label(a.category)}</span><p>{a.contact}</p><small>{responders.filter(r=>r.authority_id===a.authority_id&&r.active).length} active responders</small></div><button disabled={!enabled} onClick={()=>{setKind('authority');setEdit(a.authority_id);setName(a.name);setContact(a.contact);setCategory(a.category)}}>Edit</button><button disabled={!enabled} onClick={()=>void save('SAVE_AUTHORITY',a.authority_id,a.revision,{name:a.name,category:a.category,contact:a.contact,active:!a.active})}>{a.active?'Deactivate':'Activate'}</button></article>)}{!authorities.length&&<div className="empty-state"><Shield/><h3>Configure your response directory</h3><p>Contacts are stored for operators. Sandbox notifications send nothing externally.</p></div>}<h2 className="directory-subtitle">Responders</h2>{responders.map(r=><article className="directory-card" key={r.responder_id}><Users/><div><h3>{r.name} {!r.active&&'(inactive)'}</h3><p>{authorities.find(a=>a.authority_id===r.authority_id)?.name} · {r.contact}</p></div><button disabled={!enabled} onClick={()=>{setKind('responder');setEdit(r.responder_id);setName(r.name);setContact(r.contact);setAuthority(r.authority_id)}}>Edit</button><button disabled={!enabled} onClick={()=>void save('SAVE_RESPONDER',r.responder_id,r.revision,{name:r.name,contact:r.contact,authorityId:r.authority_id,active:!r.active})}>{r.active?'Deactivate':'Activate'}</button></article>)}</section><form className="directory-form" onSubmit={submit}><h2>{edit?'Edit':'Add'} directory entry</h2><label>Type<select value={kind} onChange={e=>{setKind(e.target.value);setEdit(null)}}><option value="authority">Authority organization</option><option value="responder">Responder</option></select></label><label>Name<input required maxLength={200} value={name} onChange={e=>setName(e.target.value)}/></label><label>Contact details<input required maxLength={500} value={contact} onChange={e=>setContact(e.target.value)}/></label>{kind==='authority'?<label>Category<select value={category} onChange={e=>setCategory(e.target.value)}>{['POLICE','AMBULANCE','FIRE_RESCUE','DISASTER','OTHER'].map(c=><option key={c}>{c}</option>)}</select></label>:<label>Authority<select required value={authority} onChange={e=>setAuthority(e.target.value)}><option value="">Select authority</option>{authorities.filter(a=>a.active).map(a=><option key={a.authority_id} value={a.authority_id}>{a.name}</option>)}</select></label>}<button className="primary-button" disabled={!enabled}>Save directory entry</button><p>Available only within your authorized response group.</p></form></div>
+function Status({ value }: { value: string }) {
+  return (
+    <span className={"status-tag status-" + value.toLowerCase()}>
+      {label(value)}
+    </span>
+  );
+}
+function hasLocation(i: Incident) {
+  const l = i.operation.payload.location;
+  return Number.isFinite(l.latitude) && Number.isFinite(l.longitude);
+}
+function IncidentMap({
+  incidents,
+  selected,
+  select,
+}: {
+  incidents: Incident[];
+  selected: string | null;
+  select: (id: string) => void;
+}) {
+  const points = incidents.filter(hasLocation);
+  const [zoom, setZoom] = useState(1),
+    [center, setCenter] = useState<[number, number]>([0, 0]);
+  function fit() {
+    if (points.length) {
+      setCenter([
+        points.reduce(
+          (s, i) => s + i.operation.payload.location.longitude!,
+          0,
+        ) / points.length,
+        points.reduce((s, i) => s + i.operation.payload.location.latitude!, 0) /
+          points.length,
+      ]);
+      setZoom(4);
+    } else {
+      setCenter([0, 0]);
+      setZoom(1);
+    }
+  }
+  const x = (lon: number) => 400 + (lon - center[0]) * 2.1 * zoom,
+    y = (lat: number) => 150 - (lat - center[1]) * 1.65 * zoom;
+  return (
+    <div className="incident-map">
+      <div className="map-caption">
+        <Crosshair size={14} /> Incident map · WGS84
+      </div>
+      <svg
+        viewBox="0 0 800 300"
+        role="img"
+        aria-label="Interactive incident coordinate map"
+      >
+        <defs>
+          <pattern
+            id="map-grid"
+            width="40"
+            height="30"
+            patternUnits="userSpaceOnUse"
+          >
+            <path
+              d="M 40 0 L 0 0 0 30"
+              fill="none"
+              stroke="#dbe4e4"
+              strokeWidth=".6"
+            />
+          </pattern>
+        </defs>
+        <rect width="800" height="300" fill="url(#map-grid)" />
+        <path
+          d={landPath}
+          transform={`translate(${x(0)} ${y(0)}) scale(${2.1 * zoom} ${-1.65 * zoom})`}
+          fill="#d7e2dc"
+          stroke="#afc4b7"
+          strokeWidth=".5"
+          vectorEffect="non-scaling-stroke"
+        />
+        {[-60, -30, 0, 30, 60].map((lat) => (
+          <g key={lat}>
+            <line
+              x1="0"
+              x2="800"
+              y1={y(lat)}
+              y2={y(lat)}
+              stroke="#c6d6d6"
+              strokeDasharray="3 5"
+            />
+            <text x="8" y={y(lat) - 5} fontSize="9" fill="#829797">
+              {lat}°
+            </text>
+          </g>
+        ))}
+        {[-150, -100, -50, 0, 50, 100, 150].map((lon) => (
+          <g key={lon}>
+            <line
+              y1="0"
+              y2="300"
+              x1={x(lon)}
+              x2={x(lon)}
+              stroke="#c6d6d6"
+              strokeDasharray="3 5"
+            />
+            <text y="289" x={x(lon) + 4} fontSize="9" fill="#829797">
+              {lon}°
+            </text>
+          </g>
+        ))}
+        {points.map((i) => (
+          <g
+            key={i.incident_id}
+            tabIndex={0}
+            role="button"
+            aria-label={`${i.operation.payload.category} ${short(i.incident_id)}`}
+            onClick={() => select(i.incident_id)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") select(i.incident_id);
+            }}
+            transform={`translate(${x(i.operation.payload.location.longitude!)},${y(i.operation.payload.location.latitude!)})`}
+            style={{ cursor: "pointer" }}
+          >
+            <title>{`${short(i.incident_id)} · ${label(i.operation.payload.category)} · ${i.status}`}</title>
+            <circle
+              r={selected === i.incident_id ? 17 : 13}
+              fill="#d65745"
+              opacity=".14"
+            />
+            <circle
+              r="6"
+              fill={closed(i.status) ? "#478379" : "#cc4a38"}
+              stroke="white"
+              strokeWidth="2"
+            />
+            <text x="12" y="4" fontSize="10" fill="#364b4c">
+              {short(i.incident_id)}
+            </text>
+          </g>
+        ))}
+      </svg>
+      <div className="map-controls">
+        <button
+          title="Zoom in"
+          onClick={() => setZoom((z) => Math.min(32, z * 2))}
+        >
+          <ZoomIn size={17} />
+        </button>
+        <button
+          title="Zoom out"
+          onClick={() => setZoom((z) => Math.max(1, z / 2))}
+        >
+          <ZoomOut size={17} />
+        </button>
+        <button title="Center on incidents" onClick={fit}>
+          <Crosshair size={17} />
+        </button>
+      </div>
+      {!points.length && (
+        <div className="map-empty">
+          <MapPin size={22} />
+          <span>No coordinates to plot</span>
+          <small>
+            {incidents.length} incidents remain available in the list
+          </small>
+        </div>
+      )}
+    </div>
+  );
+}
+function Timeline({
+  events,
+  select,
+}: {
+  events: Event[];
+  select: (id: string) => void;
+}) {
+  return (
+    <div className="event-timeline">
+      {events.map((e) => (
+        <button
+          key={e.event_id}
+          onClick={() => {
+            if (e.incident_id) select(e.incident_id);
+          }}
+        >
+          <span
+            className={
+              "event-dot " + (e.kind === "SERVER_RECEIVED" ? "urgent" : "")
+            }
+          />
+          <div>
+            <time>{time(e.occurred_at)}</time>
+            <strong>{label(e.kind)}</strong>
+            <small>
+              {e.incident_id ? short(e.incident_id) : "GATEWAY"} ·{" "}
+              {short(e.actor_id)}
+            </small>
+            {typeof e.details.note === "string" && <p>{e.details.note}</p>}
+          </div>
+        </button>
+      ))}
+      {!events.length && (
+        <p className="quiet-empty">No recorded activity yet.</p>
+      )}
+    </div>
+  );
+}
+function Directory({
+  authorities,
+  responders,
+  enabled,
+  save,
+}: {
+  authorities: Authority[];
+  responders: Responder[];
+  enabled: boolean;
+  save: (
+    action: string,
+    id: string,
+    rev: number,
+    data: Record<string, unknown>,
+  ) => Promise<void>;
+}) {
+  const [kind, setKind] = useState("authority"),
+    [edit, setEdit] = useState<string | null>(null),
+    [name, setName] = useState(""),
+    [contact, setContact] = useState(""),
+    [category, setCategory] = useState("AMBULANCE"),
+    [authority, setAuthority] = useState("");
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    const old =
+      kind === "authority"
+        ? authorities.find((a) => a.authority_id === edit)
+        : responders.find((r) => r.responder_id === edit);
+    void save(
+      kind === "authority" ? "SAVE_AUTHORITY" : "SAVE_RESPONDER",
+      edit || uuid(),
+      old?.revision || 0,
+      {
+        name,
+        contact,
+        active: true,
+        ...(kind === "authority" ? { category } : { authorityId: authority }),
+      },
+    ).then(() => {
+      setEdit(null);
+      setName("");
+      setContact("");
+    });
+  }
+  return (
+    <div className="directory-layout">
+      <section>
+        <div className="section-heading">
+          <h2>Configured organizations</h2>
+          <span>{authorities.length} organizations</span>
+        </div>
+        {authorities.map((a) => (
+          <article className="directory-card" key={a.authority_id}>
+            <Shield />
+            <div>
+              <h3>
+                {a.name} {!a.active && "(inactive)"}
+              </h3>
+              <span>{label(a.category)}</span>
+              <p>{a.contact}</p>
+              <small>
+                {
+                  responders.filter(
+                    (r) => r.authority_id === a.authority_id && r.active,
+                  ).length
+                }{" "}
+                active responders
+              </small>
+            </div>
+            <button
+              disabled={!enabled}
+              onClick={() => {
+                setKind("authority");
+                setEdit(a.authority_id);
+                setName(a.name);
+                setContact(a.contact);
+                setCategory(a.category);
+              }}
+            >
+              Edit
+            </button>
+            <button
+              disabled={!enabled}
+              onClick={() =>
+                void save("SAVE_AUTHORITY", a.authority_id, a.revision, {
+                  name: a.name,
+                  category: a.category,
+                  contact: a.contact,
+                  active: !a.active,
+                })
+              }
+            >
+              {a.active ? "Deactivate" : "Activate"}
+            </button>
+          </article>
+        ))}
+        {!authorities.length && (
+          <div className="empty-state">
+            <Shield />
+            <h3>Configure your response directory</h3>
+            <p>
+              Contacts are stored for operators. Sandbox notifications send
+              nothing externally.
+            </p>
+          </div>
+        )}
+        <h2 className="directory-subtitle">Responders</h2>
+        {responders.map((r) => (
+          <article className="directory-card" key={r.responder_id}>
+            <Users />
+            <div>
+              <h3>
+                {r.name} {!r.active && "(inactive)"}
+              </h3>
+              <p>
+                {
+                  authorities.find((a) => a.authority_id === r.authority_id)
+                    ?.name
+                }{" "}
+                · {r.contact}
+              </p>
+            </div>
+            <button
+              disabled={!enabled}
+              onClick={() => {
+                setKind("responder");
+                setEdit(r.responder_id);
+                setName(r.name);
+                setContact(r.contact);
+                setAuthority(r.authority_id);
+              }}
+            >
+              Edit
+            </button>
+            <button
+              disabled={!enabled}
+              onClick={() =>
+                void save("SAVE_RESPONDER", r.responder_id, r.revision, {
+                  name: r.name,
+                  contact: r.contact,
+                  authorityId: r.authority_id,
+                  active: !r.active,
+                })
+              }
+            >
+              {r.active ? "Deactivate" : "Activate"}
+            </button>
+          </article>
+        ))}
+      </section>
+      <form className="directory-form" onSubmit={submit}>
+        <h2>{edit ? "Edit" : "Add"} directory entry</h2>
+        <label>
+          Type
+          <select
+            value={kind}
+            onChange={(e) => {
+              setKind(e.target.value);
+              setEdit(null);
+            }}
+          >
+            <option value="authority">Authority organization</option>
+            <option value="responder">Responder</option>
+          </select>
+        </label>
+        <label>
+          Name
+          <input
+            required
+            maxLength={200}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
+        <label>
+          Contact details
+          <input
+            required
+            maxLength={500}
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+          />
+        </label>
+        {kind === "authority" ? (
+          <label>
+            Category
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              {["POLICE", "AMBULANCE", "FIRE_RESCUE", "DISASTER", "OTHER"].map(
+                (c) => (
+                  <option key={c}>{c}</option>
+                ),
+              )}
+            </select>
+          </label>
+        ) : (
+          <label>
+            Authority
+            <select
+              required
+              value={authority}
+              onChange={(e) => setAuthority(e.target.value)}
+            >
+              <option value="">Select authority</option>
+              {authorities
+                .filter((a) => a.active)
+                .map((a) => (
+                  <option key={a.authority_id} value={a.authority_id}>
+                    {a.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
+        <button className="primary-button" disabled={!enabled}>
+          Save directory entry
+        </button>
+        <p>Available only within your authorized response group.</p>
+      </form>
+    </div>
+  );
 }

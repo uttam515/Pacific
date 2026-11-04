@@ -328,7 +328,7 @@ public final class MeshEngine: @unchecked Sendable {
 
         // Update UI feeds
         if receivedMessage.type == .sos {
-            onDiagnosticLog?(.rx, "EMERGENCY SOS RECEIVED from \(fromPeer) via hop \(envelope.hopCount + 1): \"\(receivedMessage.content)\"")
+            onDiagnosticLog?(.rx, "Emergency SOS persisted (hop \(envelope.hopCount + 1))")
             onSOSReceived?(receivedMessage)
         } else {
             onDiagnosticLog?(.rx, "Received & persisted message [\(receivedMessage.id.prefix(8))] from \(fromPeer)")
@@ -377,8 +377,9 @@ public final class MeshEngine: @unchecked Sendable {
             operationRepository.markStatus(operationId: ack.operationId, status: .peerRelayed)
             messageRepository.updateStatus(id: targetEntityId, status: .relayed)
         case .backendCommitted:
-            operationRepository.markStatus(operationId: ack.operationId, status: .gatewaySynced)
-            messageRepository.updateStatus(id: targetEntityId, status: .synced)
+            // A radio peer may relay a claimed backend ACK, but cannot attest
+            // that our server signed it. Only authenticated HTTP confirms commit.
+            onDiagnosticLog?(.ack, "Relayed backend ACK observed; local commitment requires authenticated backend evidence")
         case .recipientAcknowledged:
             if alreadyCommitted { break }
             operationRepository.markStatus(operationId: ack.operationId, status: .peerRelayed)

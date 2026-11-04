@@ -10,7 +10,11 @@ public final class PeerTrustManager: @unchecked Sendable {
 
     /// When true, allows all discovered peers for development/testing mesh.
     /// In production mode, strictly requires explicit pairing or verification.
+    #if DEBUG
     public var isDevelopmentMode: Bool = true
+    #else
+    public var isDevelopmentMode: Bool = false
+    #endif
     public let maxPacketsPerMinute: Int = 60
 
     public init() {}

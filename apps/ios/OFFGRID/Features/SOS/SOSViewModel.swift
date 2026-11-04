@@ -81,7 +81,7 @@ public final class SOSViewModel: ObservableObject {
         case .queued:
             self.broadcastSuccessMessage = "No peers connected. Beacon queued in SQLite — will transmit immediately upon connection."
         case .relayed:
-            self.broadcastSuccessMessage = "Peer Stored: Durably stored on mesh peer outbox. Relayed on mesh radio."
+            self.broadcastSuccessMessage = "Mesh relay recorded. A peer storage ACK and a backend commitment are separate events."
         case .delivered:
             self.broadcastSuccessMessage = "Recipient Acknowledged: Confirmed received and acknowledged by end recipient."
         case .synced:

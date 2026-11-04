@@ -223,6 +223,8 @@ export function createHttp(
       res.json(await engine.snapshot(await actor(req))),
     ),
   );
+  app.get("/api/v1/connectivity", (_req,res)=>res.type("text/plain").send("OFFGRID_INTERNET_OK_V1"));
+  app.get("/api/v1/emergency/incidents", asyncRoute(async(req,res)=>res.json(await emergency.list(await actor(req),String(req.query.cursor||""),Number(req.query.limit||100)))));
   app.get("/api/v1/gateway/ready", asyncRoute(async (req,res) => res.json(await emergency.ready(await actor(req)))));
   app.post("/api/v1/gateway/heartbeat", asyncRoute(async (req,res) => res.json(await emergency.heartbeat(await actor(req),req.body))));
   app.post("/api/v1/gateway/observations", asyncRoute(async (req,res) => res.json(await emergency.observation(await actor(req),req.body))));

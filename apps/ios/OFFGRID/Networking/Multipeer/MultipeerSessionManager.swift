@@ -37,7 +37,11 @@ public final class MultipeerSessionManager: NSObject, @unchecked Sendable {
 
     /// When true, enables development auto-approval mode for local test mesh and physical debugging.
     /// When false, requires strict SecTrust X.509 verification or explicit certificateValidator approval.
+    #if DEBUG
     public var allowDevelopmentCertificates: Bool = true
+    #else
+    public var allowDevelopmentCertificates: Bool = false
+    #endif
 
     /// Optional explicit validator closure for custom trust pinning, pairing tokens, or authorized node IDs.
     public var certificateValidator: (@Sendable (MCPeerID, [Any]?) -> Bool)?

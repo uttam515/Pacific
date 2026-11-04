@@ -44,7 +44,7 @@ public struct SyncHistoryView: View {
 
                 Section {
                     Button(action: {
-                        Task { await gateway.sync(); viewModel.loadOperations() }
+                        viewModel.triggerManualSync(using:gateway)
                     }) {
                         HStack {
                             Spacer()

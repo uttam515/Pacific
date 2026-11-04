@@ -46,9 +46,9 @@ This preserves its UUID and existing credentials and writes a host-administratio
 
 Run `bash scripts/backend-macos.sh start`. The printed LAN origin is a candidate until tested from a phone. Login at `http://<host>:4000/login`; the root page is the connected incident dashboard. Legacy network diagnostics remain at `/?legacy=1`; its previously gated commands remain gated. HTTP is permitted only by explicit trusted-local settings. Use HTTPS with a valid certificate for cellular/public access. Do not expose PostgreSQL or use broad firewall disabling.
 
-**Cellular test distinction:** a private LAN IP normally cannot be reached over cellular. A same-Wi-Fi test verifies LAN integration, not the requested mobile-data gateway. For C using mobile data, host the API behind your team's authorized HTTPS reverse proxy and reachable hostname. No such host is deployed or implied by this branch. Keep `DASHBOARD_ORIGIN` equal to its exact HTTPS origin. `/ws` must be proxied with upgrade support. The browser UI uses same-origin cookies, not stored bearer tokens.
+**Cellular test distinction:** a private LAN IP normally cannot be reached over cellular. A same-Wi-Fi test verifies LAN integration, not the requested mobile-data gateway. For C using mobile data, host the API behind your team's authorized HTTPS reverse proxy and reachable hostname. Set C’s optional internet probe URL to a team-controlled public HTTPS endpoint serving exactly `OFFGRID_INTERNET_OK_V1` (the public `/api/v1/connectivity` path provides this). A LAN backend alone is not evidence of internet access. Without a probe, internet is explicitly unknown even if authenticated backend readiness succeeds. No such public host is deployed or implied by this branch. Keep `DASHBOARD_ORIGIN` equal to its exact HTTPS origin. `/ws` must be proxied with upgrade support. The browser UI uses same-origin cookies, not stored bearer tokens.
 
-In C's Sync → Internet gateway screen, enter the API ORIGIN (no `/api/v1` path) and private credential. HTTPS is the default. For local-only tests, explicitly permit local HTTP; iOS ATS/local-network permissions may require a hostname ending `.local` and device permission. Do not enable arbitrary public HTTP loads. Keep OFFGRID active on all test phones; the gateway pauses on inactive/background lifecycle. No continuous background availability claim is made.
+In C's Sync → Internet gateway screen, enter the API ORIGIN (no `/api/v1` path) and private credential. HTTPS is the default. For local-only tests, explicitly permit local HTTP; iOS ATS/local-network permissions may require a hostname ending `.local` and device permission. Do not enable arbitrary public HTTP loads. Use a Debug build on the controlled test mesh. Release defaults require explicit trusted peers and certificate validation. The unsigned rc.2 operation identifies an asserted origin. A trusted gateway is responsible for its relay assertion. Production device pairing/origin attestation requires separate review. Keep OFFGRID active on all test phones; the gateway pauses on inactive/background lifecycle. No continuous background availability claim is made.
 
 ## Transaction, queue and acknowledgment rules
 
@@ -70,6 +70,8 @@ Core rc.2 push, pull, conflicts, receipts and `/dashboard/snapshot` remain docum
 
 | Method and path (`/api/v1`) | Permission | Request | Success |
 |---|---|---|---|
+| GET `/connectivity` | public | none | `text/plain` marker `OFFGRID_INTERNET_OK_V1`, usable as a team-controlled public HTTPS probe; no credentials sent |
+| GET `/emergency/incidents` | operator | `cursor=<received_at>_<incidentUUID>&limit=100`, limit 1..500 | `{schemaVersion:1,incidents,nextCursor:string|null}` for older incidents, descending keyset order |
 | GET `/gateway/ready` | gateway | none | `{schemaVersion:1,nodeId,serverNodeId,ready:true,timestamp}`; real database query |
 | POST `/gateway/heartbeat` | gateway | heartbeat below | `{schemaVersion:1,accepted:true}` |
 | POST `/gateway/observations` | gateway that committed/uploaded operation | observation below | `{schemaVersion:1,accepted:true,duplicate:boolean}` |
@@ -77,7 +79,7 @@ Core rc.2 push, pull, conflicts, receipts and `/dashboard/snapshot` remain docum
 | GET `/incidents/{incidentId}` | operator, own group | UUID path | `{schemaVersion:1,incident,events,notifications,uploads}` |
 | POST `/emergency/commands` | operator, own group | command below | `{schemaVersion:1,commandId,subjectId,revision,duplicate}` |
 
-Heartbeat fields: `schemaVersion:1`, `nodeId:UUID` matching credential, `reportedAt:integer>=0`, `meshConnected:boolean`, `internetReachable:boolean` (authenticated backend was reachable), `pendingUploads:integer 0..1000000`, `failedUploads:integer 0..1000000`. Server `observed_at` is authoritative freshness. Current heartbeat means observed within 45 seconds; after that all device-reported connectivity/backlog values are stale, not zero. `backendConnected` is derived from server receipt age. State changes/reconnection are stored; inferred heartbeat expiry is labelled stale, not a fabricated radio disconnection event.
+Heartbeat fields: `schemaVersion:1`, `nodeId:UUID` matching credential, `reportedAt:integer>=0`, `meshConnected:boolean`, `internetReachable:boolean|null` (independent public HTTPS probe; null when not configured), `pendingUploads:integer 0..1000000`, `failedUploads:integer 0..1000000`. Server `observed_at` is authoritative freshness. Current heartbeat means observed within 45 seconds; after that all device-reported connectivity/backlog values are stale, not zero. `backendConnected` is derived from server receipt age. State changes/reconnection are stored; inferred heartbeat expiry is labelled stale, not a fabricated radio disconnection event.
 
 Observation fields: `schemaVersion:1`, `operationId:UUID`, `packetId:UUID`, `hopCount:integer 0..32`, `receivedAt:integer>=0`. Only the first report for a gateway/operation pair is stored; repeat submission is idempotent. It is explicitly labelled self-reported. Full relay paths, forwarding times and location accuracy are unknown unless actually supplied by a future reviewed extension. No coordinates or telemetry are invented.
 
@@ -104,7 +106,7 @@ Allowed incident transitions: RECEIVED → ACKNOWLEDGED or CANCELLED; ACKNOWLEDG
 Snapshot example structure (arrays empty when no records; never seeded automatically):
 
 ```json
-{"schemaVersion":1,"observedAt":1793740000000,"incidents":[],"authorities":[],"responders":[],"gateways":[],"events":[],"counts":[],"incidentLimit":500}
+{"schemaVersion":1,"observedAt":1793740000000,"incidents":[],"authorities":[],"responders":[],"gateways":[],"events":[],"counts":[],"incidentLimit":500,"nextCursor":null}
 ```
 
 Database projection names are intentionally snake_case; canonical `operation` retains rc.2 camelCase unchanged. `incident` fields: `incident_id`, `group_id`, `operation_id`, `origin_node_id`, `first_gateway_id:UUID|null`, `received_at:decimal string`, `status`, `authority_id:UUID|null`, `responder_id:UUID|null`, `revision:integer`, `operation:Operation`. PostgreSQL bigint fields in projection responses serialize as decimal strings, unlike canonical timestamps which remain numeric. `authority`: `authority_id,group_id,name,category,contact,active,revision`. `responder`: `responder_id,group_id,authority_id,name,contact,active,revision`.
@@ -117,7 +119,7 @@ Errors: existing `{schemaVersion:1,error:{code,message,retryable}}`. 401 absent/
 
 ## Live reads, limitations and acceptance
 
-WebSocket `/ws` emits rc.2 `SYNC_NOTIFICATION` after successful transactions. Notifications are refresh hints; emergency clients fetch the full snapshot. The dashboard reconnects after five seconds and polls every fifteen seconds, including heartbeat expiry. The backend is currently one process; cross-process pub/sub is not implemented. Read snapshot contains the most recent 500 incidents and 200 events; exact incident lookup retrieves older records. This is an MVP capacity bound, not an unlimited incident archive browser. The map is a local WGS84 coordinate plot, not a navigation/base-map service; it sends no location data to tile providers.
+WebSocket `/ws` emits rc.2 `SYNC_NOTIFICATION` after successful transactions. Notifications are refresh hints; emergency clients fetch the full snapshot. The dashboard reconnects after five seconds and polls every fifteen seconds, including heartbeat expiry. The backend is currently one process; cross-process pub/sub is not implemented. The initial snapshot contains up to 500 incidents and 200 recent events. Load older incidents through the keyset cursor; detail returns full recorded incident history. The map bundles Natural Earth 1:110m public-domain land outlines and WGS84 coordinates locally. It is not street navigation and sends no location data to tile providers.
 
 No tests in this repository prove physical cellular/mesh interoperability. Automation uses native Swift with simulated radio links, real HTTP/PostgreSQL, and browser automation. CI test data is explicitly synthetic and only permitted in `_test` databases. `acceptance-host.mjs` writes random ephemeral credentials outside the repository; CI uploads only screenshots without credential fields.
 
